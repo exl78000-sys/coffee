@@ -1,0 +1,10 @@
+{
+  "name": "coffee-brew-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "咖啡沖煮記錄器：記錄豆子、手沖分段、水粉比與磨豆機刻度換算",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "python3 -m http.server 8000"
+  }
+}

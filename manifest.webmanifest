@@ -1,0 +1,16 @@
+{
+  "name": "咖啡沖煮記錄",
+  "short_name": "沖煮記錄",
+  "description": "記錄每支豆子的手沖分段、水粉比與磨豆機刻度",
+  "lang": "zh-Hant-TW",
+  "start_url": "./#/brews",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f1ea",
+  "theme_color": "#8a5426",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
