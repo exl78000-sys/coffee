@@ -64,14 +64,17 @@ npm start          # 等同 python3 -m http.server 8000
 # 打開 http://localhost:8000
 ```
 
-### 在手機上（建議）
+### 發佈成 claude.ai 頁面
+`npm run build:artifact` 會把整個 App 打包成單一檔案 `dist/coffee-log.html`，可以發佈成 claude.ai 的私人頁面。這個版本的資料存在頁面的雲端資料庫，用同一個帳號在手機或電腦打開都是同一份資料。
+
+### 在手機上（GitHub Pages）
 把這個 repo 用 **GitHub Pages** 發佈（Settings → Pages → Source 選 `main` branch 的根目錄），用手機開啟網址後：
 - iPhone：Safari 分享 → 加入主畫面
 - Android：Chrome 選單 → 安裝應用程式
 
 之後就像一般 App 一樣可以離線使用。
 
-> ⚠️ 資料只存在該裝置的瀏覽器中。換手機或清除瀏覽資料前，請到「設定」匯出備份，再到新裝置匯入。
+> ⚠️ 一般網頁版的資料只存在該裝置的瀏覽器中。換手機或清除瀏覽資料前，請到「設定」匯出備份，再到新裝置匯入。
 
 ## 開發
 
@@ -81,7 +84,8 @@ npm start          # 等同 python3 -m http.server 8000
 index.html            頁面骨架與底部導覽
 css/style.css         樣式（含深色模式）
 js/calc.js            純計算：水粉比、分段縮放、研磨換算、範本（可在 Node 測試）
-js/store.js           資料層（localStorage、匯入匯出）
+js/store.js           資料層（localStorage 或 claude.ai 頁面資料庫、匯入匯出）
+scripts/build-artifact.js  打包成單一 HTML，供 claude.ai 頁面使用
 js/app.js             各頁面畫面與互動
 sw.js                 離線快取（修改檔案後請調整 VERSION）
 tests/calc.test.js    計算函式單元測試

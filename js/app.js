@@ -41,6 +41,10 @@
   const TECHNIQUES = ['繞圈', '中心注水', '螺旋往外', '細水柱', '大水柱沖擊', '攪拌', '搖晃濾杯', '靜置'];
   const RATIO_PRESETS = [['手沖 1:15', 15], ['手沖 1:16', 16], ['手沖 1:17', 17], ['義式 1:2', 2], ['摩卡壺 1:10', 10], ['冷萃 1:8', 8]];
 
+  // 嵌在 claude.ai 頁面時不能改網址，改用內部路由
+  const EMBED = !!window.COFFEE_EMBED;
+  let currentHash = (!EMBED && location.hash) || '#/brews';
+
   let cleanup = null; // 離開頁面時要執行的收尾（計時器）
   let pending = null; // 從計時器 / 工具帶到「新增記錄」的草稿
 
@@ -114,6 +118,64 @@
 
   function numInput(f, value, extra) {
     return `<input type="number" step="any" inputmode="decimal" data-f="${f}" value="${esc(value)}" ${extra || ''}>`;
+  }
+
+  function go(h, replace) {
+    if (EMBED) { currentHash = h; route(); return; }
+    if (location.hash === h) route();
+    else if (replace) location.replace(h);
+    else location.hash = h;
+  }
+
+  /** 頁面內的確認視窗（claude.ai 頁面不允許瀏覽器原生 confirm） */
+  function ask(message, okLabel, danger) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'modal';
+      wrap.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">
+        <p>${esc(message)}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-v="0">取消</button>
+          <button type="button" class="btn ${danger ? 'danger-fill' : 'primary'}" data-v="1">${esc(okLabel || '確定')}</button>
+        </div></div>`;
+      const done = (v) => { wrap.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') done(false); };
+      wrap.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-v]');
+        if (b) done(b.dataset.v === '1');
+        else if (e.target === wrap) done(false);
+      });
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(wrap);
+      wrap.querySelector('[data-v="1"]').focus();
+    });
+  }
+
+  /** 顯示一段可複製的文字（下載不可用時的備案） */
+  function showText(title, text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal';
+    wrap.innerHTML = `<div class="modal-box">
+      <p><b>${esc(title)}</b></p>
+      <textarea id="copy-text" rows="10" readonly></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-v="close">關閉</button>
+        <button type="button" class="btn primary" data-v="copy">複製</button>
+      </div></div>`;
+    $('#copy-text', wrap).value = text;
+    wrap.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-v]');
+      if (!b && e.target !== wrap) return;
+      if (b && b.dataset.v === 'copy') {
+        const ta = $('#copy-text', wrap);
+        const fallback = () => { ta.focus(); ta.select(); toast('已選取，請手動複製'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('已複製'), fallback);
+        else fallback();
+        return;
+      }
+      wrap.remove();
+    });
+    document.body.appendChild(wrap);
   }
 
   // ---------- 資料輔助 ----------
@@ -191,7 +253,8 @@
 
   function route() {
     if (cleanup) { cleanup(); cleanup = null; }
-    const h = location.hash.slice(1) || '/brews';
+    if (!EMBED) currentHash = location.hash || '#/brews';
+    const h = currentHash.slice(1) || '/brews';
     const [path, qs] = h.split('?');
     const [a, b, c] = path.split('/').filter(Boolean);
     const q = new URLSearchParams(qs || '');
@@ -213,7 +276,7 @@
     else if (a === 'tools') renderTools(q);
     else if (a === 'settings') renderSettings();
     else if (a === 'grinder') { tab = 'settings'; renderGrinderForm(b === 'new' ? null : b); }
-    else { location.replace('#/brews'); return; }
+    else { go('#/brews', true); return; }
 
     $$('.tabbar a').forEach((el) => el.classList.toggle('active', el.dataset.tab === tab));
     window.scrollTo(0, 0);
@@ -244,7 +307,7 @@
     </div>`);
 
     const sel = $('#bean-filter', page);
-    if (sel) sel.addEventListener('change', () => { location.hash = link(method, sel.value); });
+    if (sel) sel.addEventListener('change', () => { go(link(method, sel.value)); });
   }
 
   function emptyBrews() {
@@ -301,16 +364,16 @@
       </div>
     </div>`);
 
-    page.addEventListener('click', (e) => {
+    page.addEventListener('click', async (e) => {
       const act = e.target.closest('[data-act]');
       if (!act) return;
       if (act.dataset.act === 'best') {
         S.toggleBest(id);
         toast(S.get('brews', id).isBest ? `已設為這支豆子的${m.label}最佳配方` : '已取消最佳配方');
         renderBrewDetail(id);
-      } else if (act.dataset.act === 'del' && confirm('確定刪除這筆記錄？')) {
+      } else if (act.dataset.act === 'del' && await ask('確定刪除這筆記錄？', '刪除', true)) {
         S.remove('brews', id);
-        location.hash = '#/brews';
+        go('#/brews');
       }
     });
   }
@@ -612,13 +675,13 @@
       updateStageSum();
     }
 
-    function onClick(e) {
+    async function onClick(e) {
       const b = e.target.closest('[data-act]');
       if (!b) return;
       const act = b.dataset.act;
       if (act === 'tpl') {
         const t = C.POUR_TEMPLATES[b.dataset.k];
-        if (d.stages.length && !confirm(`以「${t.label}」取代目前的分段？`)) return;
+        if (d.stages.length && !await ask(`以「${t.label}」取代目前的分段？`, '取代')) return;
         d.stages = C.buildTemplate(b.dataset.k, d.dose, d.water);
         if (!d.stages.length) toast('請先填粉量與水量');
         renderStages();
@@ -659,7 +722,7 @@
         if (t !== null) s.start = C.formatTime(t);
       });
       S.upsert('brews', rec);
-      location.hash = '#/brew/' + rec.id;
+      go('#/brew/' + rec.id);
     }
 
     function bind() {
@@ -746,7 +809,7 @@
       <p class="center"><button class="btn danger ghost small" data-act="del">刪除這支豆子</button></p>
     </div>`);
 
-    page.addEventListener('click', (e) => {
+    page.addEventListener('click', async (e) => {
       const act = e.target.closest('[data-act]');
       if (!act) return;
       if (act.dataset.act === 'archive') {
@@ -755,7 +818,7 @@
         renderBeanDetail(id);
       } else if (act.dataset.act === 'del') {
         const msg = brews.length ? `這支豆子有 ${brews.length} 筆記錄，刪除後記錄會保留但顯示為「未指定豆子」。確定刪除？` : '確定刪除這支豆子？';
-        if (confirm(msg)) { S.remove('beans', id); location.hash = '#/beans'; }
+        if (await ask(msg, '刪除', true)) { S.remove('beans', id); go('#/beans'); }
       }
     });
   }
@@ -797,7 +860,7 @@
       const fd = new FormData(e.target);
       fd.forEach((v, k) => { b[k] = k === 'weight' ? C.num(v) : String(v).trim(); });
       S.upsert('beans', b);
-      location.hash = '#/bean/' + b.id;
+      go('#/bean/' + b.id);
     });
   }
 
@@ -968,14 +1031,14 @@
       const t = Math.round(elapsed());
       pause();
       if (brew) {
-        location.hash = `#/brew/new?from=${id}${t ? '&time=' + t : ''}`;
+        go(`#/brew/new?from=${id}${t ? '&time=' + t : ''}`);
       } else {
         pending = {
           method: 'pourover',
           totalTime: t ? C.formatTime(t) : '',
           stages: laps.map((s, i) => ({ label: i === 0 ? '悶蒸' : `第 ${i + 1} 段`, start: C.formatTime(s), amount: null, technique: '' })),
         };
-        location.hash = '#/brew/new?pending=1';
+        go('#/brew/new?pending=1');
       }
     });
 
@@ -1100,7 +1163,7 @@
       RECIPE_FIELDS.forEach((f) => { if (result.src[f] !== undefined) p[f] = result.src[f]; });
       Object.assign(p, { dose: result.dose, ratio: result.ratio, water: result.water, stages: result.stages });
       pending = p;
-      location.hash = '#/brew/new?pending=1';
+      go('#/brew/new?pending=1');
     });
     load();
   }
@@ -1168,13 +1231,13 @@
     $('#gd-set', el).addEventListener('input', calc);
 
     const cb = $('#cb-go', el);
-    if (cb) cb.addEventListener('click', () => {
+    if (cb) cb.addEventListener('click', async () => {
       const a = S.get('grinders', $('#cb-a', el).value);
       const b = S.get('grinders', $('#cb-b', el).value);
       if (a.id === b.id) return toast('請選兩台不同的磨豆機');
       const zero = C.calibrateZero(a, $('#cb-as', el).value, b, $('#cb-bs', el).value);
       if (zero === null) return toast('請填寫兩邊的刻度');
-      if (!confirm(`把「${b.name}」的零點偏移由 ${b.zeroMicrons || 0} µm 改為 ${zero} µm？`)) return;
+      if (!await ask(`把「${b.name}」的零點偏移由 ${b.zeroMicrons || 0} µm 改為 ${zero} µm？`, '校正')) return;
       b.zeroMicrons = zero;
       S.upsert('grinders', b);
       toast('已校正');
@@ -1208,7 +1271,9 @@
       </section>
 
       <section class="card"><h2>資料與備份</h2>
-        <p class="muted small">資料只存在這台裝置的瀏覽器裡。換手機、清除瀏覽資料前，請先匯出備份。</p>
+        <p class="muted small">${S.backend === 'db'
+          ? '資料存在這個頁面的雲端資料庫，用同一個帳號在手機或電腦打開都看得到。仍建議偶爾匯出備份。'
+          : '資料只存在這台裝置的瀏覽器裡。換手機、清除瀏覽資料前，請先匯出備份。'}</p>
         <p>${S.all('beans').length} 支豆子 · ${S.all('brews').length} 筆記錄 · ${grinders.length} 台磨豆機</p>
         <div class="actions">
           <button class="btn primary" data-act="export">匯出備份 (JSON)</button>
@@ -1234,18 +1299,18 @@
       if (!f) return;
       try {
         const text = await f.text();
-        if (importMode === 'replace' && !confirm('會用備份檔取代目前所有資料，確定？')) return;
-        const n = S.importJSON(text, importMode);
+        if (importMode === 'replace' && !await ask('會用備份檔取代目前所有資料，確定？', '取代', true)) return;
+        const n = await S.importJSON(text, importMode);
         toast(`已匯入 ${n} 筆資料`);
         renderSettings();
       } catch (e) {
-        alert('匯入失敗：' + e.message);
+        toast('匯入失敗：' + e.message);
       } finally {
         file.value = '';
       }
     });
 
-    page.addEventListener('click', (e) => {
+    page.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-act],[data-preset]');
       if (!b) return;
       if (b.dataset.preset) { addPreset(b.dataset.preset); renderSettings(); return; }
@@ -1258,17 +1323,27 @@
       } else if (act === 'sample') {
         loadSample();
         toast('已載入範例資料');
-        location.hash = '#/brews';
+        go('#/brews');
       } else if (act === 'clear') {
-        if (confirm('確定清除所有豆子、記錄與磨豆機？建議先匯出備份。') && confirm('真的要清除嗎？此動作無法復原。')) {
-          S.clear();
+        if (await ask('確定清除所有豆子、記錄與磨豆機？此動作無法復原，建議先匯出備份。', '全部清除', true)) {
+          await S.clear();
           renderSettings();
         }
       }
     });
   }
 
-  function download(name, text) {
+  async function download(name, text) {
+    if (EMBED) {
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      if (!dl) return showText('備份內容（複製後存成 .json 檔）', text);
+      try {
+        await dl.save({ filename: name, data: text });
+      } catch (e) {
+        if (e && e.code !== 'declined') showText('備份內容（複製後存成 .json 檔）', text);
+      }
+      return;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
     a.download = name;
@@ -1327,14 +1402,14 @@
       e.preventDefault();
       read();
       S.upsert('grinders', g);
-      location.hash = '#/settings';
+      go('#/settings');
     });
-    form.addEventListener('click', (e) => {
+    form.addEventListener('click', async (e) => {
       if (!e.target.closest('[data-act="del"]')) return;
       const used = S.all('brews').filter((b) => b.grinderId === id).length;
-      if (confirm(used ? `有 ${used} 筆記錄用到這台磨豆機，刪除後那些記錄只會保留刻度數字。確定刪除？` : '確定刪除這台磨豆機？')) {
+      if (await ask(used ? `有 ${used} 筆記錄用到這台磨豆機，刪除後那些記錄只會保留刻度數字。確定刪除？` : '確定刪除這台磨豆機？', '刪除', true)) {
         S.remove('grinders', id);
-        location.hash = '#/settings';
+        go('#/settings');
       }
     });
     preview();
@@ -1375,11 +1450,22 @@
 
   // ---------- 啟動 ----------
 
-  S.load();
-  window.addEventListener('hashchange', route);
-  route();
+  S.onError = toast;
+  if (EMBED) {
+    // 攔截站內連結，改用內部路由
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href^="#/"]');
+      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      go(a.getAttribute('href'));
+    });
+  } else {
+    window.addEventListener('hashchange', route);
+  }
+  view.innerHTML = '<p class="empty">載入中…</p>';
+  S.init().then(route);
 
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  if (!EMBED && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();
