@@ -44,15 +44,27 @@ test('沖煮範本總水量正確', () => {
     assert.equal(C.stagesTotal(st), 240, key);
   }
   assert.equal(C.buildTemplate('three', 15, 240)[0].amount, 30);
+  assert.equal(C.buildTemplate('three', 15, 240)[0].end, 40);
 });
 
-test('計時器段落判斷', () => {
-  const stages = [{ start: '0:00' }, { start: '0:40' }, { start: '1:20' }];
+test('計時器段落判斷（秒數為每段結束時間）', () => {
+  const stages = [{ end: 40 }, { end: '1:20' }, { end: 120 }];
   assert.equal(C.stageIndexAt(stages, 0), 0);
   assert.equal(C.stageIndexAt(stages, 39), 0);
   assert.equal(C.stageIndexAt(stages, 40), 1);
-  assert.equal(C.stageIndexAt(stages, 200), 2);
-  assert.equal(C.stageIndexAt([{ start: '0:10' }], 3), -1);
+  assert.equal(C.stageIndexAt(stages, 119), 2);
+  assert.equal(C.stageIndexAt(stages, 120), 3);
+  assert.equal(C.stageIndexAt([], 5), 0);
+});
+
+test('舊格式開始時間轉成結束秒數', () => {
+  const old = [{ start: '0:00', amount: 30 }, { start: '0:40', amount: 120 }, { start: '1:20', amount: 90 }];
+  const m = C.migrateStages(old, '2:45');
+  assert.deepEqual(m.map((s) => s.end), [40, 80, 165]);
+  assert.ok(m.every((s) => s.start === undefined));
+  assert.deepEqual(C.migrateStages([{ start: '0:30' }]).map((s) => s.end), [60]);
+  const fresh = [{ end: 30, amount: 20 }];
+  assert.equal(C.migrateStages(fresh), fresh);
 });
 
 test('研磨刻度換算', () => {

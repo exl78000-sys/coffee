@@ -31,7 +31,7 @@
     moka: [['dripper', '摩卡壺', 'Bialetti 3 杯份'], ['waterStart', '注入的水', '熱水 / 冷水'], ['heat', '火力', '中小火'], ['flowStart', '開始流出', '2:30']],
   };
 
-  const RECIPE_FIELDS = ['method', 'grinderId', 'grindSetting', 'dose', 'ratio', 'water', 'yield', 'temp', 'dripper', 'filter',
+  const RECIPE_FIELDS = ['method', 'grinderId', 'grinderName', 'grindSetting', 'dose', 'ratio', 'water', 'yield', 'temp', 'dripper', 'filter',
     'machine', 'basket', 'preinfusion', 'pressure', 'waterStart', 'heat', 'flowStart', 'totalTime'];
   const NUM_FIELDS = new Set(['dose', 'ratio', 'water', 'yield', 'temp', 'preinfusion', 'pressure']);
   const TASTE = [['acidity', '酸'], ['sweetness', '甜'], ['bitterness', '苦'], ['body', '醇厚']];
@@ -180,19 +180,37 @@
 
   // ---------- 資料輔助 ----------
 
-  function beanName(id) {
-    const b = S.get('beans', id);
-    return b ? b.name : '未指定豆子';
-  }
-
   function unitOf(g) {
     return g && g.unit !== undefined && g.unit !== null ? g.unit : '格';
   }
 
+  /** 記錄上的豆子名稱：常用豆子，或沒加入常用時直接輸入的名稱 */
+  function brewBeanName(b) {
+    const bean = S.get('beans', b.beanId);
+    return bean ? bean.name : b.beanName || '未指定豆子';
+  }
+
   function grindText(b) {
     const g = S.get('grinders', b.grinderId);
-    if (!g && !b.grindSetting) return '';
-    return [g ? g.name : '', b.grindSetting ? b.grindSetting + ' ' + unitOf(g) : ''].filter(Boolean).join(' ').trim();
+    const name = g ? g.name : b.grinderName || '';
+    if (!name && !b.grindSetting) return '';
+    return [name, b.grindSetting ? b.grindSetting + ' ' + unitOf(g) : ''].filter(Boolean).join(' ').trim();
+  }
+
+  function findByName(collection, name) {
+    const n = String(name || '').trim().toLowerCase();
+    return n ? S.all(collection).find((x) => String(x.name || '').trim().toLowerCase() === n) || null : null;
+  }
+
+  function presetByName(name) {
+    const n = String(name || '').trim().toLowerCase();
+    return C.GRINDER_PRESETS.find((p) => p.name.toLowerCase() === n) || null;
+  }
+
+  function beanPhotoSrc(bean) {
+    if (!bean) return '';
+    if (bean.photoId) return '/_blob/' + bean.photoId;
+    return bean.photo || '';
   }
 
   function summary(b) {
@@ -231,7 +249,7 @@
   function brewCard(b, opts) {
     opts = opts || {};
     return `<a class="card brew-card" href="#/brew/${b.id}">
-      <div class="row">${methodTag(b.method)}<strong class="grow">${esc(opts.hideBean ? fmtDate(b.date) : beanName(b.beanId))}</strong>${b.isBest ? '<span class="best">★ 最佳</span>' : ''}</div>
+      <div class="row">${methodTag(b.method)}<strong class="grow">${esc(opts.hideBean ? fmtDate(b.date) : brewBeanName(b))}</strong>${b.isBest ? '<span class="best">★ 最佳</span>' : ''}</div>
       <div class="meta">${esc(summary(b)) || '<span class="muted">沒有參數</span>'}</div>
       <div class="row">${stars(b.rating)}<span class="muted small">${opts.hideBean ? '' : esc(fmtDate(b.date))}</span></div>
     </a>`;
@@ -241,12 +259,12 @@
     if (!stages || !stages.length) return '';
     const cum = C.cumulative(stages);
     return `<table class="table stages-table">
-      <thead><tr><th>時間</th><th>段落 / 手法</th><th class="r">注水</th><th class="r">累計</th></tr></thead>
+      <thead><tr><th>段</th><th class="r">注水</th><th class="r">累計</th><th class="r">結束</th></tr></thead>
       <tbody>${stages.map((s, i) => `<tr>
-        <td class="mono">${esc(s.start)}</td>
-        <td>${esc(s.label)}${s.technique ? `<div class="muted small">${esc(s.technique)}</div>` : ''}</td>
+        <td>${esc(s.label || `第 ${i + 1} 段`)}${s.technique ? `<div class="muted small">${esc(s.technique)}</div>` : ''}</td>
         <td class="r mono">${s.amount ? esc(s.amount) + 'g' : '—'}</td>
-        <td class="r mono">${cum[i]}g</td></tr>`).join('')}</tbody></table>`;
+        <td class="r mono">${cum[i]}g</td>
+        <td class="r mono">${C.stageEnd(s) !== null ? C.formatTime(C.stageEnd(s)) : '—'}</td></tr>`).join('')}</tbody></table>`;
   }
 
   // ---------- 路由 ----------
@@ -344,7 +362,7 @@
       `<div class="bar"><span>${l}</span><div class="track"><div style="width:${b[k] * 20}%"></div></div><b>${b[k]}</b></div>`).join('');
 
     const page = mount(`<div class="page">
-      ${header(bean ? bean.name : '未指定豆子', { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
+      ${header(brewBeanName(b), { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
       <div class="row sub">${methodTag(b.method)}<span class="muted">${esc(fmtDate(b.date))}</span>${b.isBest ? '<span class="best">★ 最佳配方</span>' : ''}</div>
       <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></section>
       ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}</section>` : ''}
@@ -380,12 +398,14 @@
 
   // ---------- 新增 / 編輯沖煮記錄 ----------
 
+  const blankStage = () => ({ amount: null, end: null });
+
   function methodDefaults(method, dose) {
     const m = METHODS[method];
     const d = { method, dose: dose || m.dose, ratio: m.ratio };
     d[m.out] = C.waterFromDose(d.dose, d.ratio);
     if (m.temp) d.temp = m.temp;
-    d.stages = m.stages ? C.buildTemplate(m.template, d.dose, d.water) : [];
+    d.stages = m.stages ? [blankStage()] : [];
     return d;
   }
 
@@ -398,7 +418,7 @@
       d = Object.assign(methodDefaults(pending.method || 'pourover'), pending);
       pending = null;
     } else if (from) {
-      d = { beanId: from.beanId, stages: clone(from.stages || []) };
+      d = { beanId: from.beanId, beanName: from.beanName, stages: clone(from.stages || []) };
       RECIPE_FIELDS.forEach((f) => { if (from[f] !== undefined) d[f] = from[f]; });
     } else {
       const method = METHODS[q.get('m')] ? q.get('m') : (last && last.method) || 'pourover';
@@ -421,8 +441,10 @@
     const editing = id ? S.get('brews', id) : null;
     if (id && !editing) return notFound();
     const d = editing ? clone(editing) : newDraft(q);
-    d.stages = d.stages || [];
+    d.stages = C.migrateStages(d.stages || [], d.totalTime);
     let autoScale = true;
+    let addBean = true; // 輸入新的豆子名稱時，儲存時加入常用
+    let addGrinder = true;
     let grindNote = '';
     let page;
 
@@ -437,9 +459,12 @@
 
     function formHtml() {
       const m = METHODS[d.method];
+      const bean = S.get('beans', d.beanId);
+      const grinder = S.get('grinders', d.grinderId);
       const beans = S.all('beans').filter((b) => !b.archived || b.id === d.beanId)
         .sort((x, y) => x.name.localeCompare(y.name, 'zh-Hant'));
-      const grinders = S.all('grinders');
+      const grinderNames = S.all('grinders').map((g) => g.name)
+        .concat(C.GRINDER_PRESETS.map((p) => p.name).filter((n) => !findByName('grinders', n)));
       const extras = (EXTRA[d.method] || []).map(([f, label, ph, isNum]) =>
         field(label, isNum ? numInput(f, d[f], `placeholder="${ph}"`) : `<input data-f="${f}" value="${esc(d[f])}" placeholder="${esc(ph)}">`)).join('');
 
@@ -450,14 +475,14 @@
             <div class="seg">${METHOD_KEYS.map((k) => `<label><input type="radio" name="method" value="${k}" data-f="method" ${d.method === k ? 'checked' : ''}><span>${METHODS[k].label}</span></label>`).join('')}</div>
             <div>
               ${field('日期時間', `<input type="datetime-local" data-f="date" value="${esc(d.date)}">`)}
-              ${field('豆子', `<select data-f="beanId"><option value="">（未指定）</option>${beans.map((b) => `<option value="${b.id}" ${b.id === d.beanId ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select>`)}
+              ${field('豆子', `<input data-f="beanText" list="bean-list" value="${esc(bean ? bean.name : d.beanName)}" placeholder="輸入或選擇豆子">`)}
             </div>
             <div id="bean-hint" class="hint"></div>
           </section>
 
           <section class="card"><h2>研磨</h2>
             <div class="grid2">
-              ${field('磨豆機', `<select data-f="grinderId"><option value="">（未指定）</option>${grinders.map((g) => `<option value="${g.id}" ${g.id === d.grinderId ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>`)}
+              ${field('磨豆機', `<input data-f="grinderText" list="grinder-list" value="${esc(grinder ? grinder.name : d.grinderName)}" placeholder="輸入或選擇">`)}
               ${field('刻度', `<input data-f="grindSetting" inputmode="decimal" value="${esc(d.grindSetting)}" placeholder="例：24">`)}
             </div>
             <div id="grind-hint" class="hint"></div>
@@ -479,10 +504,13 @@
           ${m.stages ? `<section class="card">
             <div class="card-head"><h2>分段注水</h2>
               <label class="check"><input type="checkbox" id="auto-scale" ${autoScale ? 'checked' : ''}> 隨水量等比例調整</label></div>
-            <div class="chips"><span class="muted small">套用範本：</span>${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
+            <p class="muted small stage-help">每段填注水克數，和這段<b>結束</b>的秒數（例：30 或 1:30）。</p>
             <div id="stages"></div>
-            <button type="button" class="btn ghost block" data-act="add-stage">＋ 新增段落</button>
+            <button type="button" class="btn ghost block" data-act="add-stage">＋ 手動新增</button>
             <div id="stage-sum" class="hint"></div>
+            <details class="tpl"><summary>套用範本</summary>
+              <div class="chips">${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
+            </details>
           </section>` : ''}
 
           <section class="card"><h2>風味</h2>
@@ -498,29 +526,33 @@
             <button class="btn primary" type="submit">儲存</button>
           </div>
         </form>
+        <datalist id="bean-list">${beans.map((b) => `<option value="${esc(b.name)}">`).join('')}</datalist>
+        <datalist id="grinder-list">${grinderNames.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
         <datalist id="tech-list">${TECHNIQUES.map((t) => `<option value="${t}">`).join('')}</datalist>
       </div>`;
     }
 
     function stageRow(s, i) {
+      const detail = !!(s.label || s.technique);
+      const prevEnd = i > 0 ? C.stageEnd(d.stages[i - 1]) : null;
       return `<div class="stage" data-i="${i}">
-        <div class="stage-head">
+        <div class="stage-line">
           <span class="stage-no">${i + 1}</span>
-          <input data-sf="label" value="${esc(s.label)}" placeholder="段落名稱">
-          <button type="button" class="icon-btn" data-act="del-stage" aria-label="刪除段落">✕</button>
+          <label class="mini"><input type="number" step="any" inputmode="decimal" data-sf="amount" value="${esc(s.amount)}" placeholder="注水" aria-label="第 ${i + 1} 段注水克數"><span>g</span></label>
+          <label class="mini"><input data-sf="end" inputmode="numeric" value="${esc(s.end)}" placeholder="${prevEnd !== null ? prevEnd + 30 : 30}" aria-label="第 ${i + 1} 段結束秒數"><span>秒</span></label>
+          <button type="button" class="icon-btn" data-act="more-stage" aria-expanded="${detail}" aria-label="詳細方式（選填）" title="詳細方式（選填）">⋯</button>
+          <button type="button" class="icon-btn" data-act="del-stage" aria-label="刪除這段">✕</button>
         </div>
-        <div class="grid3">
-          ${field('開始', `<input data-sf="start" value="${esc(s.start)}" placeholder="0:00" inputmode="numeric">`)}
-          ${field('注水 g', `<input type="number" step="any" inputmode="decimal" data-sf="amount" value="${esc(s.amount)}">`)}
-          <div class="field"><span>累計</span><output class="cum">—</output></div>
+        <div class="stage-sub muted small"></div>
+        <div class="stage-more" ${detail ? '' : 'hidden'}>
+          <input data-sf="label" value="${esc(s.label)}" placeholder="段落名稱（選填，例：悶蒸）">
+          <input data-sf="technique" list="tech-list" value="${esc(s.technique)}" placeholder="手法（選填）：繞圈 / 中心注水…">
         </div>
-        <input data-sf="technique" list="tech-list" value="${esc(s.technique)}" placeholder="手法：繞圈 / 中心注水 / 攪拌…">
       </div>`;
     }
 
     function renderStages() {
-      $('#stages', page).innerHTML = d.stages.map(stageRow).join('') ||
-        '<p class="muted small">還沒有分段，可以套用範本或手動新增。</p>';
+      $('#stages', page).innerHTML = d.stages.map(stageRow).join('');
       updateStageSum();
     }
 
@@ -528,12 +560,15 @@
       const el = $('#stage-sum', page);
       if (!el) return;
       const cum = C.cumulative(d.stages);
-      $$('.stage', page).forEach((row, i) => { $('.cum', row).textContent = cum[i] + ' g'; });
+      $$('.stage', page).forEach((row, i) => {
+        const end = C.stageEnd(d.stages[i]);
+        $('.stage-sub', row).textContent = `累計 ${cum[i]} g` + (end !== null ? ` · ${C.formatTime(end)} 結束` : '');
+      });
       const sum = C.stagesTotal(d.stages);
       const water = C.num(d.water);
-      const off = water !== null && d.stages.length && Math.abs(sum - water) > 0.5;
+      const off = water !== null && sum > 0 && Math.abs(sum - water) > 0.5;
       el.className = 'hint' + (off ? ' warn' : '');
-      el.innerHTML = d.stages.length ? `分段合計 <b>${sum}</b> g${water !== null ? ` / 總水量 ${water} g` : ''}${off ? '（不一致）' : ''}` : '';
+      el.innerHTML = sum > 0 ? `分段合計 <b>${sum}</b> g${water !== null ? ` / 總水量 ${water} g` : ''}${off ? '（不一致）' : ''}` : '';
     }
 
     function setVal(f, v) {
@@ -545,7 +580,9 @@
       const el = $('#bean-hint', page);
       const bean = S.get('beans', d.beanId);
       if (!bean) {
-        el.innerHTML = S.all('beans').length ? '' : '還沒有豆子資料，<a href="#/bean/new">先新增一支豆子</a>';
+        el.innerHTML = d.beanName
+          ? `<label class="check"><input type="checkbox" id="add-bean" ${addBean ? 'checked' : ''}> 「${esc(d.beanName)}」加入常用豆子</label>`
+          : '';
         return;
       }
       const parts = [];
@@ -564,11 +601,15 @@
     function updateGrindHint() {
       const el = $('#grind-hint', page);
       const g = S.get('grinders', d.grinderId);
-      if (!S.all('grinders').length) {
-        el.innerHTML = '<a href="#/grinder/new">新增磨豆機</a>後，換磨豆機時可以自動換算刻度。';
+      if (!g) {
+        if (d.grinderName) {
+          const p = presetByName(d.grinderName);
+          el.innerHTML = `<label class="check"><input type="checkbox" id="add-grinder" ${addGrinder ? 'checked' : ''}> 「${esc(d.grinderName)}」加入常用磨豆機${p ? `（帶入每格約 ${p.micronsPerStep} µm，可換算刻度）` : ''}</label>`;
+        } else {
+          el.innerHTML = S.all('grinders').length ? '' : '輸入磨豆機名稱，儲存時會加入常用；之後換磨豆機能自動換算刻度。';
+        }
         return;
       }
-      if (!g) { el.innerHTML = ''; return; }
       if (!C.canConvert(g)) {
         el.innerHTML = `這台磨豆機還沒設定「每格微米」，<a href="#/grinder/${g.id}/edit">設定後</a>即可換算刻度。`;
         return;
@@ -606,7 +647,7 @@
 
     function applyRecipe(src) {
       RECIPE_FIELDS.forEach((f) => { if (src[f] !== undefined) d[f] = src[f]; });
-      d.stages = clone(src.stages || []);
+      d.stages = C.migrateStages(clone(src.stages || []), src.totalTime);
     }
 
     function onInput(e) {
@@ -615,10 +656,13 @@
       if ((e.type === 'change') === isText) return; // 文字類用 input 事件、選單與勾選用 change 事件
 
       if (t.id === 'auto-scale') { autoScale = t.checked; return; }
+      if (t.id === 'add-bean') { addBean = t.checked; return; }
+      if (t.id === 'add-grinder') { addGrinder = t.checked; return; }
 
       if (t.dataset.sf) {
         const s = d.stages[+t.closest('.stage').dataset.i];
-        s[t.dataset.sf] = t.dataset.sf === 'amount' ? C.num(t.value) : t.value;
+        const k = t.dataset.sf;
+        s[k] = k === 'amount' ? C.num(t.value) : k === 'end' ? C.parseTime(t.value) : t.value;
         updateStageSum();
         return;
       }
@@ -628,7 +672,7 @@
       const out = METHODS[d.method].out;
 
       if (f === 'method') {
-        const keep = { beanId: d.beanId, grinderId: d.grinderId, grindSetting: d.grindSetting };
+        const keep = { beanId: d.beanId, beanName: d.beanName, grinderId: d.grinderId, grinderName: d.grinderName, grindSetting: d.grindSetting };
         Object.assign(d, methodDefaults(t.value), keep);
         const best = d.beanId && bestBrew(d.beanId, d.method, d.id);
         if (best) applyRecipe(best);
@@ -636,12 +680,21 @@
         return;
       }
 
-      if (f === 'grinderId') {
+      if (f === 'beanText') {
+        const match = findByName('beans', t.value);
+        d.beanId = match ? match.id : '';
+        d.beanName = match ? '' : t.value.trim();
+        updateBeanHint();
+        return;
+      }
+
+      if (f === 'grinderText') {
         const prev = S.get('grinders', d.grinderId);
-        const next = S.get('grinders', t.value);
-        d.grinderId = t.value;
+        const next = findByName('grinders', t.value);
+        d.grinderId = next ? next.id : '';
+        d.grinderName = next ? '' : t.value.trim();
         grindNote = '';
-        if (prev && next && d.grindSetting) {
+        if (prev && next && prev !== next && d.grindSetting) {
           const conv = C.convertGrind(prev, d.grindSetting, next);
           if (conv !== null) {
             grindNote = `已由 ${prev.name} ${d.grindSetting} ${unitOf(prev)} 自動換算`;
@@ -661,7 +714,7 @@
 
       d[f] = NUM_FIELDS.has(f) ? C.num(t.value) : t.value;
 
-      if (f === 'beanId' || f === 'date') updateBeanHint();
+      if (f === 'date') updateBeanHint();
       if (f === 'grindSetting') { grindNote = ''; updateGrindHint(); }
       if (f === 'dose' || f === 'ratio') {
         const v = C.waterFromDose(d.dose, d.ratio);
@@ -681,19 +734,22 @@
       const act = b.dataset.act;
       if (act === 'tpl') {
         const t = C.POUR_TEMPLATES[b.dataset.k];
-        if (d.stages.length && !await ask(`以「${t.label}」取代目前的分段？`, '取代')) return;
-        d.stages = C.buildTemplate(b.dataset.k, d.dose, d.water);
-        if (!d.stages.length) toast('請先填粉量與水量');
+        const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
+        if (filled && !await ask(`以「${t.label}」取代目前的分段？`, '取代')) return;
+        const built = C.buildTemplate(b.dataset.k, d.dose, d.water);
+        if (!built.length) return toast('請先填粉量與水量');
+        d.stages = built;
         renderStages();
       } else if (act === 'add-stage') {
-        const lastStart = d.stages.length ? C.parseTime(d.stages[d.stages.length - 1].start) : null;
-        d.stages.push({
-          label: d.stages.length ? `第 ${d.stages.length + 1} 段` : '悶蒸',
-          start: C.formatTime(lastStart === null ? 0 : lastStart + 30),
-          amount: null,
-          technique: '',
-        });
+        d.stages.push(blankStage());
         renderStages();
+        const rows = $$('.stage', page);
+        $('[data-sf="amount"]', rows[rows.length - 1]).focus();
+      } else if (act === 'more-stage') {
+        const more = $('.stage-more', b.closest('.stage'));
+        more.hidden = !more.hidden;
+        b.setAttribute('aria-expanded', String(!more.hidden));
+        if (!more.hidden) $('input', more).focus();
       } else if (act === 'del-stage') {
         d.stages.splice(+b.closest('.stage').dataset.i, 1);
         renderStages();
@@ -711,16 +767,28 @@
     function onSubmit(e) {
       e.preventDefault();
       const rec = clone(d);
-      rec.stages = (rec.stages || []).filter((s) => s.label || s.start || s.amount || s.technique);
+      // 新輸入的豆子 / 磨豆機：勾選「加入常用」就建立
+      if (!rec.beanId && rec.beanName && addBean) rec.beanId = S.upsert('beans', { name: rec.beanName }).id;
+      if (rec.beanId || !rec.beanName) delete rec.beanName;
+      if (!rec.grinderId && rec.grinderName && addGrinder) {
+        const p = presetByName(rec.grinderName);
+        rec.grinderId = S.upsert('grinders', p
+          ? { name: p.name, unit: '格', micronsPerStep: p.micronsPerStep, zeroMicrons: p.zeroMicrons, precision: p.precision, notes: '預設參考值，可依實際校正' }
+          : { name: rec.grinderName, unit: '格', precision: 1, zeroMicrons: 0 }).id;
+      }
+      if (rec.grinderId || !rec.grinderName) delete rec.grinderName;
+
+      rec.stages = (rec.stages || []).filter((s) => s.amount || C.stageEnd(s) !== null || s.label || s.technique);
+      rec.stages.forEach((s) => {
+        s.end = C.stageEnd(s);
+        if (!s.label) delete s.label;
+        if (!s.technique) delete s.technique;
+      });
       if (!METHODS[rec.method].stages) rec.stages = [];
       if (rec.totalTime) {
         const t = C.parseTime(rec.totalTime);
         if (t !== null) rec.totalTime = C.formatTime(t);
       }
-      rec.stages.forEach((s) => {
-        const t = C.parseTime(s.start);
-        if (t !== null) s.start = C.formatTime(t);
-      });
       S.upsert('brews', rec);
       go('#/brew/' + rec.id);
     }
@@ -751,14 +819,18 @@
         const rd = C.restDays(b.roastDate);
         const rem = remaining(b);
         const best = bestBrew(b.id);
+        const src = beanPhotoSrc(b);
         return `<a class="card bean-card ${b.archived ? 'archived' : ''}" href="#/bean/${b.id}">
-          <div class="row"><strong class="grow">${esc(b.name)}</strong>${b.roast ? `<span class="tag">${esc(b.roast)}</span>` : ''}</div>
-          <div class="meta">${esc([b.roaster, b.process].filter(Boolean).join(' · '))}</div>
-          <div class="row small muted">
-            ${rd !== null ? `<span>養豆 ${rd} 天</span>` : ''}
-            ${rem !== null ? `<span>剩 ${rem}g</span>` : ''}
-            <span>${brews.length} 筆記錄</span>
-            ${best ? `<span class="best">最佳 ${esc(summary(best))}</span>` : ''}
+          ${src ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">` : ''}
+          <div class="grow">
+            <div class="row"><strong class="grow">${esc(b.name)}</strong>${b.roast ? `<span class="tag">${esc(b.roast)}</span>` : ''}</div>
+            <div class="meta">${esc([b.roaster, b.process].filter(Boolean).join(' · '))}</div>
+            <div class="row small muted">
+              ${rd !== null ? `<span>養豆 ${rd} 天</span>` : ''}
+              ${rem !== null ? `<span>剩 ${rem}g</span>` : ''}
+              <span>${brews.length} 筆記錄</span>
+              ${best ? `<span class="best">最佳 ${esc(summary(best))}</span>` : ''}
+            </div>
           </div>
         </a>`;
       }).join('') : '<div class="empty"><p>還沒有豆子。</p><p><a class="btn primary" href="#/bean/new">新增第一支豆子</a></p></div>'}</div>
@@ -772,6 +844,7 @@
     const brews = beanBrews(id);
     const rd = C.restDays(bean.roastDate);
     const rem = remaining(bean);
+    const src = beanPhotoSrc(bean);
     const methods = METHOD_KEYS.filter((k) => brews.some((b) => b.method === k));
     const info = [['烘豆商', bean.roaster], ['產區', bean.origin], ['品種', bean.variety], ['處理法', bean.process],
       ['烘焙度', bean.roast], ['烘焙日', bean.roastDate && `${bean.roastDate}（第 ${rd} 天）`],
@@ -781,9 +854,11 @@
     const page = mount(`<div class="page">
       ${header(bean.name, { back: '#/beans', action: `<a class="btn small" href="#/bean/${id}/edit">編輯</a>` })}
       <section class="card">
-        <div class="stats">${info.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>
+        ${src ? `<img class="bean-photo" src="${esc(src)}" alt="${esc(bean.name)} 包裝照片">` : ''}
+        ${info.length ? `<div class="stats">${info.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
         ${bean.flavor ? `<p><b>風味標示：</b>${esc(bean.flavor)}</p>` : ''}
         ${bean.notes ? `<p class="muted">${esc(bean.notes)}</p>` : ''}
+        ${!info.length && !bean.flavor && !src ? `<p class="muted">還沒有規格資料，<a href="#/bean/${id}/edit">拍照或填寫</a>。</p>` : ''}
       </section>
       ${methods.map((k) => {
         const best = bestBrew(id, k);
@@ -818,20 +893,111 @@
         renderBeanDetail(id);
       } else if (act.dataset.act === 'del') {
         const msg = brews.length ? `這支豆子有 ${brews.length} 筆記錄，刪除後記錄會保留但顯示為「未指定豆子」。確定刪除？` : '確定刪除這支豆子？';
-        if (await ask(msg, '刪除', true)) { S.remove('beans', id); go('#/beans'); }
+        if (await ask(msg, '刪除', true)) {
+          if (bean.photoId) deleteAsset(bean.photoId);
+          S.remove('beans', id);
+          go('#/beans');
+        }
       }
     });
+  }
+
+  // ---------- 照片 ----------
+
+  async function useCap(name) {
+    if (!EMBED || !(window.claude && window.claude.use)) return null;
+    try { return await window.claude.use(name); } catch (e) { return null; }
+  }
+
+  async function deleteAsset(assetId) {
+    const assets = await useCap('assets');
+    if (assets) assets.delete(assetId).catch(() => {});
+  }
+
+  /** 縮小照片並轉成 JPEG */
+  function shrinkImage(file, maxSide, quality) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * k);
+        canvas.height = Math.round(img.naturalHeight * k);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('照片轉換失敗'))), 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('無法讀取這張照片')); };
+      img.src = url;
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(new Error('照片轉換失敗'));
+      r.readAsDataURL(blob);
+    });
+  }
+
+  /** 這個環境能不能請 Claude 讀照片（claude.ai 頁面才有） */
+  async function labelReader() {
+    const sample = await useCap('sample');
+    if (!sample) return null;
+    const caps = await sample.limits().catch(() => null);
+    return caps && caps.images ? sample : null;
+  }
+
+  const LABEL_PROMPT = `這是一包咖啡豆的包裝或規格卡照片。請讀出上面寫的資訊，只回傳一個 JSON 物件，只放照片上讀得到的欄位，讀不到的就不要放、不要猜：
+- name：豆子名稱，例如「衣索比亞 耶加雪菲 G1」
+- roaster：烘豆商
+- origin：國家、產區、莊園或處理廠
+- variety：品種
+- process：處理法，例如 水洗、日曬、蜜處理、厭氧發酵
+- roast：烘焙度，只能是 極淺焙、淺焙、中淺焙、中焙、中深焙、深焙 其中之一
+- roastDate：烘焙日期，格式 YYYY-MM-DD
+- weight：淨重，單位克，只填數字
+- price：價格
+- flavor：風味描述，用頓號分隔
+- notes：其他有用的資訊，例如海拔、批次、生產者
+文字用繁體中文，品種、莊園等專有名詞可保留原文。
+範例：{"name":"肯亞 AA","process":"水洗","roast":"淺焙","weight":200}`;
+
+  function sampleErrorText(e) {
+    const code = e && e.code;
+    if (code === 'not_granted' || code === 'sampling_disabled') return '沒有允許讀取照片，請手動填寫。';
+    if (code === 'rate_limited') return '讀取太頻繁或用量已達上限，請稍後再試或手動填寫。';
+    if (code === 'image_rejected') return '這張照片無法讀取，請換一張清楚的照片。';
+    if (code === 'cancelled') return '';
+    return '沒有讀到規格，請手動填寫。';
   }
 
   function renderBeanForm(id) {
     const editing = id ? S.get('beans', id) : null;
     if (id && !editing) return notFound();
     const b = editing ? clone(editing) : { roastDate: '' };
+    const oldPhotoId = editing && editing.photoId;
     const text = (f, label, ph, extra) => field(label, `<input name="${f}" value="${esc(b[f])}" placeholder="${esc(ph || '')}" ${extra || ''}>`);
+    let previewSrc = beanPhotoSrc(b);
+    let reader = null;
 
     const page = mount(`<div class="page">
       ${header(editing ? '編輯豆子' : '新增豆子', { back: editing ? '#/bean/' + id : '#/beans' })}
       <form id="bean-form" autocomplete="off">
+        <section class="card">
+          <div class="card-head"><h2>規格照片</h2></div>
+          <div id="photo-box"></div>
+          <div class="actions">
+            <button type="button" class="btn" data-act="camera">拍照</button>
+            <button type="button" class="btn ghost" data-act="pick">從相簿選</button>
+            <button type="button" class="btn ghost danger" data-act="photo-del" hidden>移除照片</button>
+          </div>
+          <div id="photo-status" class="hint" role="status"></div>
+          <input type="file" accept="image/*" capture="environment" id="cam-in" hidden>
+          <input type="file" accept="image/*" id="pick-in" hidden>
+        </section>
         <section class="card">
           ${text('name', '名稱 *', '例：衣索比亞 耶加雪菲 G1', 'required')}
           <div class="grid2">
@@ -855,13 +1021,103 @@
       <datalist id="process-list">${PROCESSES.map((p) => `<option value="${p}">`).join('')}</datalist>
     </div>`);
 
-    $('#bean-form', page).addEventListener('submit', (e) => {
+    const form = $('#bean-form', page);
+    const status = (msg) => { $('#photo-status', page).textContent = msg; };
+
+    function renderPhoto() {
+      $('#photo-box', page).innerHTML = previewSrc
+        ? `<img class="bean-photo" src="${esc(previewSrc)}" alt="豆子包裝照片">`
+        : `<div class="photo-empty">拍下包裝上的規格標籤${reader ? '，會自動讀取並填入下面的欄位' : '，方便日後對照'}</div>`;
+      $('[data-act="photo-del"]', page).hidden = !previewSrc;
+    }
+
+    /** 只填空白欄位，回傳填了幾個 */
+    function fill(data) {
+      if (!data || typeof data !== 'object') return 0;
+      let n = 0;
+      ['name', 'roaster', 'origin', 'variety', 'process', 'roast', 'roastDate', 'weight', 'price', 'flavor', 'notes'].forEach((k) => {
+        let v = data[k];
+        if (v === null || v === undefined || String(v).trim() === '') return;
+        v = String(v).trim();
+        if (k === 'roast' && !ROASTS.includes(v)) return;
+        if (k === 'roastDate' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+        if (k === 'weight') { v = C.num(v); if (v === null) return; }
+        const el = form.elements[k];
+        if (!el || String(el.value).trim()) return;
+        el.value = v;
+        el.classList.add('filled');
+        n++;
+      });
+      return n;
+    }
+
+    async function onPhoto(file) {
+      if (!file) return;
+      status('處理照片中…');
+      try {
+        const big = await shrinkImage(file, 1600, 0.85);
+        let stored = false;
+        const assets = await useCap('assets');
+        if (assets) {
+          try {
+            const r = await assets.upload(big, { type: 'image/jpeg' });
+            if (b.photoId && b.photoId !== oldPhotoId) deleteAsset(b.photoId); // 這次編輯中上傳過、又換掉的
+            b.photoId = r.id;
+            delete b.photo;
+            previewSrc = r.url;
+            stored = true;
+          } catch (e) { /* 改存縮圖 */ }
+        }
+        if (!stored) {
+          b.photo = await blobToDataUrl(await shrinkImage(file, 900, 0.7));
+          delete b.photoId;
+          previewSrc = b.photo;
+        }
+        renderPhoto();
+        if (!reader) { status(''); return; }
+        status('正在讀取規格…（第一次會詢問是否允許 Claude 讀取照片）');
+        try {
+          const n = fill(await reader.json(LABEL_PROMPT, { images: big }));
+          status(n ? `已從照片填入 ${n} 個欄位，請確認是否正確。` : '照片上沒有讀到可以填入的新資訊。');
+        } catch (e) {
+          status(sampleErrorText(e));
+        }
+      } catch (e) {
+        status(e.message || '照片處理失敗');
+      }
+    }
+
+    page.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-act]');
+      if (!act) return;
+      if (act.dataset.act === 'camera') $('#cam-in', page).click();
+      else if (act.dataset.act === 'pick') $('#pick-in', page).click();
+      else if (act.dataset.act === 'photo-del') {
+        if (b.photoId && b.photoId !== oldPhotoId) deleteAsset(b.photoId);
+        delete b.photoId;
+        delete b.photo;
+        previewSrc = '';
+        renderPhoto();
+        status('');
+      }
+    });
+    ['#cam-in', '#pick-in'].forEach((sel) => {
+      const input = $(sel, page);
+      input.addEventListener('change', () => { onPhoto(input.files[0]); input.value = ''; });
+    });
+    form.addEventListener('input', (e) => e.target.classList.remove('filled'));
+
+    form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
-      fd.forEach((v, k) => { b[k] = k === 'weight' ? C.num(v) : String(v).trim(); });
+      const fd = new FormData(form);
+      fd.forEach((v, k) => { if (k) b[k] = k === 'weight' ? C.num(v) : String(v).trim(); });
+      if (oldPhotoId && oldPhotoId !== b.photoId) deleteAsset(oldPhotoId);
       S.upsert('beans', b);
       go('#/bean/' + b.id);
     });
+
+    renderPhoto();
+    labelReader().then((r) => { reader = r; if (page.isConnected) renderPhoto(); });
   }
 
   // ---------- 計時器 ----------
@@ -872,14 +1128,15 @@
     const brew = free ? null : S.get('brews', id);
     if (!free && !brew) return notFound();
 
-    const stages = brew ? (brew.stages || []).filter((s) => C.parseTime(s.start) !== null) : [];
+    // 每段的秒數是「這段結束」的時間
+    const stages = brew ? C.migrateStages(brew.stages || [], brew.totalTime).filter((s) => C.stageEnd(s) !== null) : [];
     const cum = C.cumulative(stages);
     const target = brew ? C.parseTime(brew.totalTime) : null;
 
     const page = mount(`<div class="page timer-page">
       ${header('計時沖煮', { back: brew ? '#/brew/' + id : '#/timer' })}
       <section class="card center">
-        <div class="muted">${brew ? esc(beanName(brew.beanId)) + ' · ' + esc(summary(brew)) : '自由計時：每次開始注水時按「分段」'}</div>
+        <div class="muted">${brew ? esc(brewBeanName(brew)) + ' · ' + esc(summary(brew)) : '自由計時：每段注水結束時按「這段結束」'}</div>
         <div id="clock" class="clock">0:00</div>
         ${target !== null ? `<div class="muted">目標總時間 ${esc(brew.totalTime)}</div>` : ''}
       </section>
@@ -887,12 +1144,12 @@
       <div class="timer-controls">
         <button class="btn" id="reset">重設</button>
         <button class="btn primary big" id="toggle">開始</button>
-        ${free ? '<button class="btn" id="lap" disabled>分段</button>' : ''}
+        ${free ? '<button class="btn" id="lap" disabled>這段結束</button>' : ''}
       </div>
       ${stages.length ? `<ol class="stage-list" id="slist">${stages.map((s, i) => `<li>
-        <span class="mono">${esc(s.start)}</span>
-        <span class="grow">${esc(s.label || `第 ${i + 1} 段`)}${s.technique ? `<small>${esc(s.technique)}</small>` : ''}</span>
-        <span class="r mono">${s.amount ? '+' + esc(s.amount) + 'g' : ''}<small>→ ${cum[i]}g</small></span></li>`).join('')}</ol>` : ''}
+        <span class="stage-no">${i + 1}</span>
+        <span class="grow">${s.amount ? '注水 ' + esc(s.amount) + 'g' : esc(s.label || '等待')}<small>${esc([s.amount ? s.label : '', s.technique].filter(Boolean).join(' · '))}</small></span>
+        <span class="r mono">${C.formatTime(C.stageEnd(s))}<small>累計 ${cum[i]}g</small></span></li>`).join('')}</ol>` : ''}
       ${free ? '<ol class="stage-list" id="laps"></ol>' : ''}
       <label class="check center-check"><input type="checkbox" id="sound" checked> 段落提示音與震動</label>
       <button class="btn block" id="finish">完成，存成記錄</button>
@@ -938,16 +1195,19 @@
     function renderNow(t) {
       if (!now) return;
       const idx = C.stageIndexAt(stages, t);
-      const cur = idx >= 0 ? stages[idx] : null;
-      const next = stages[idx + 1];
-      let html = cur
-        ? `<div class="now-label">${esc(cur.label || `第 ${idx + 1} 段`)}</div>
-           <div class="now-amount">注水 <b>${cur.amount ? esc(cur.amount) : '—'}</b> g → 累計 <b>${cum[idx]}</b> g</div>
-           ${cur.technique ? `<div class="now-tech">${esc(cur.technique)}</div>` : ''}`
-        : '<div class="now-label">準備</div>';
-      if (next) {
-        const left = Math.max(0, Math.ceil(C.parseTime(next.start) - t));
-        html += `<div class="now-next">下一段「${esc(next.label || '')}」${esc(next.start)} 開始，還有 <b>${left}</b> 秒</div>`;
+      const cur = stages[idx];
+      let html;
+      if (cur) {
+        const end = C.stageEnd(cur);
+        const left = Math.max(0, Math.ceil(end - t));
+        html = `<div class="now-label">第 ${idx + 1} 段${cur.label ? ' · ' + esc(cur.label) : ''}</div>
+          <div class="now-amount">${cur.amount ? `注水 <b>${esc(cur.amount)}</b> g → 累計 <b>${cum[idx]}</b> g` : '等待'}</div>
+          <div class="now-end">${C.formatTime(end)} 結束，還有 <b>${left}</b> 秒</div>
+          ${cur.technique ? `<div class="now-tech">${esc(cur.technique)}</div>` : ''}`;
+        const next = stages[idx + 1];
+        if (next) html += `<div class="now-next">下一段：${next.amount ? `注水 ${esc(next.amount)} g` : esc(next.label || '等待')}，到 ${C.formatTime(C.stageEnd(next))}</div>`;
+      } else {
+        html = `<div class="now-label">注水完成</div><div class="now-amount">總共 <b>${cum[cum.length - 1]}</b> g，等待滴濾結束</div>`;
       }
       now.innerHTML = html;
       $$('#slist li', page).forEach((li, i) => {
@@ -968,11 +1228,12 @@
       if (!stages.length) return;
       const idx = C.stageIndexAt(stages, t);
       if (running) {
-        if (idx !== lastIdx && idx >= 0) { beep(880, 0.35); buzz(300); }
+        // 開始或換段時提示；目前這段結束前 3、2、1 秒短嗶
+        if (idx !== lastIdx) { beep(880, 0.35); buzz(300); }
         lastIdx = idx;
-        const next = stages[idx + 1];
-        if (next) {
-          const left = Math.ceil(C.parseTime(next.start) - t);
+        const cur = stages[idx];
+        if (cur) {
+          const left = Math.ceil(C.stageEnd(cur) - t);
           const key = idx + ':' + left;
           if (left >= 1 && left <= 3 && key !== lastCount) { lastCount = key; beep(660, 0.08); }
         }
@@ -989,13 +1250,12 @@
 
     function renderLaps() {
       const el = $('#laps', page);
-      if (el) el.innerHTML = laps.map((t, i) => `<li><span class="mono">${C.formatTime(t)}</span><span class="grow">${i === 0 ? '悶蒸' : `第 ${i + 1} 段`}</span></li>`).join('');
+      if (el) el.innerHTML = laps.map((t, i) => `<li><span class="stage-no">${i + 1}</span><span class="grow">第 ${i + 1} 段</span><span class="r mono">${C.formatTime(t)} 結束</span></li>`).join('');
     }
 
     function start() {
       running = true;
       startAt = performance.now();
-      if (free && !laps.length) { laps.push(0); renderLaps(); }
       toggleBtn.textContent = '暫停';
       if (lapBtn) lapBtn.disabled = false;
       timerId = setInterval(tick, 200);
@@ -1036,7 +1296,7 @@
         pending = {
           method: 'pourover',
           totalTime: t ? C.formatTime(t) : '',
-          stages: laps.map((s, i) => ({ label: i === 0 ? '悶蒸' : `第 ${i + 1} 段`, start: C.formatTime(s), amount: null, technique: '' })),
+          stages: (laps.length ? laps : [t]).map((end) => ({ amount: null, end })),
         };
         go('#/brew/new?pending=1');
       }
@@ -1126,7 +1386,7 @@
     }
     const first = brews.find((b) => b.isBest) || brews[0];
     el.innerHTML = `<section class="card">
-      ${field('原配方', `<select id="sc-brew">${brews.map((b) => `<option value="${b.id}" ${b.id === first.id ? 'selected' : ''}>${b.isBest ? '★ ' : ''}${esc(beanName(b.beanId))} · ${esc(summary(b))}</option>`).join('')}</select>`)}
+      ${field('原配方', `<select id="sc-brew">${brews.map((b) => `<option value="${b.id}" ${b.id === first.id ? 'selected' : ''}>${b.isBest ? '★ ' : ''}${esc(brewBeanName(b))} · ${esc(summary(b))}</option>`).join('')}</select>`)}
       <div class="grid2">
         ${field('新的粉量 g', '<input type="number" step="any" inputmode="decimal" id="sc-dose">')}
         ${field('水粉比 1:', '<input type="number" step="any" inputmode="decimal" id="sc-ratio">')}
@@ -1462,8 +1722,16 @@
   } else {
     window.addEventListener('hashchange', route);
   }
+  // 照片已刪除或讀不到時，直接不顯示
+  document.addEventListener('error', (e) => {
+    if (e.target instanceof HTMLImageElement && e.target.matches('.bean-photo, .thumb')) e.target.remove();
+  }, true);
   view.innerHTML = '<p class="empty">載入中…</p>';
-  S.init().then(route);
+  S.init().then(() => {
+    // 舊記錄的分段是「開始時間」，在記憶體裡轉成「結束秒數」；下次儲存時才寫回
+    S.all('brews').forEach((b) => { if (b.stages) b.stages = C.migrateStages(b.stages, b.totalTime); });
+    route();
+  });
 
   if (!EMBED && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

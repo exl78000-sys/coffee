@@ -112,14 +112,42 @@
     return list;
   }
 
-  /** 計時器用：回傳目前所在段落索引（-1 表示尚未開始） */
+  /** 段落的結束秒數（每段的秒數都是「這段結束」的時間點） */
+  function stageEnd(stage) {
+    return stage ? parseTime(stage.end) : null;
+  }
+
+  /**
+   * 計時器用：回傳目前所在段落索引 —— 第一個「結束時間還沒到」的段落。
+   * 全部結束時回傳 stages.length。
+   */
   function stageIndexAt(stages, elapsedSec) {
-    let idx = -1;
-    (stages || []).forEach((s, i) => {
+    const list = stages || [];
+    for (let i = 0; i < list.length; i++) {
+      const end = stageEnd(list[i]);
+      if (end === null || elapsedSec < end) return i;
+    }
+    return list.length;
+  }
+
+  /**
+   * 舊格式（每段記開始時間 start）轉成新格式（每段記結束秒數 end）：
+   * 每段結束 = 下一段開始；最後一段用總時間，沒有就開始 + 30 秒。
+   */
+  function migrateStages(stages, totalTime) {
+    const list = stages || [];
+    if (!list.some((s) => s && s.start !== undefined && s.end === undefined)) return list;
+    const total = parseTime(totalTime);
+    return list.map((s, i) => {
+      const out = Object.assign({}, s);
       const start = parseTime(s.start);
-      if (start !== null && elapsedSec >= start) idx = i;
+      const next = list[i + 1] ? parseTime(list[i + 1].start) : null;
+      if (out.end === undefined) {
+        out.end = next !== null ? next : total !== null && start !== null && total > start ? total : start !== null ? start + 30 : null;
+      }
+      delete out.start;
+      return out;
     });
-    return idx;
   }
 
   const POUR_TEMPLATES = {
@@ -129,9 +157,9 @@
         const bloom = Math.round(dose * 2);
         const second = Math.round(water * 0.6) - bloom;
         return [
-          { label: '悶蒸', start: '0:00', amount: bloom, technique: '中心往外繞圈，確保粉層全濕' },
-          { label: '第二段', start: '0:40', amount: second, technique: '中速繞圈' },
-          { label: '第三段', start: '1:20', amount: water - bloom - second, technique: '中心小圈注水' },
+          { label: '悶蒸', end: 40, amount: bloom, technique: '中心往外繞圈，確保粉層全濕' },
+          { label: '第二段', end: 80, amount: second, technique: '中速繞圈' },
+          { label: '第三段', end: 120, amount: water - bloom - second, technique: '中心小圈注水' },
         ];
       },
     },
@@ -140,11 +168,11 @@
       build(dose, water) {
         const p = Math.round(water * 0.2);
         return [
-          { label: '第 1 注', start: '0:00', amount: p, technique: '前 40% 調整酸甜' },
-          { label: '第 2 注', start: '0:45', amount: p, technique: '' },
-          { label: '第 3 注', start: '1:30', amount: p, technique: '後 60% 調整濃度' },
-          { label: '第 4 注', start: '2:10', amount: p, technique: '' },
-          { label: '第 5 注', start: '2:40', amount: water - p * 4, technique: '' },
+          { label: '第 1 注', end: 45, amount: p, technique: '前 40% 調整酸甜' },
+          { label: '第 2 注', end: 90, amount: p, technique: '' },
+          { label: '第 3 注', end: 130, amount: p, technique: '後 60% 調整濃度' },
+          { label: '第 4 注', end: 160, amount: p, technique: '' },
+          { label: '第 5 注', end: 210, amount: water - p * 4, technique: '' },
         ];
       },
     },
@@ -153,8 +181,8 @@
       build(dose, water) {
         const bloom = Math.round(dose * 2);
         return [
-          { label: '悶蒸', start: '0:00', amount: bloom, technique: '繞圈注水' },
-          { label: '一次注完', start: '0:30', amount: water - bloom, technique: '細水柱中心注水' },
+          { label: '悶蒸', end: 30, amount: bloom, technique: '繞圈注水' },
+          { label: '一次注完', end: 120, amount: water - bloom, technique: '細水柱中心注水' },
         ];
       },
     },
@@ -162,8 +190,8 @@
       label: '浸泡',
       build(dose, water) {
         return [
-          { label: '注水', start: '0:00', amount: water, technique: '一次注入，輕攪拌' },
-          { label: '濾出', start: '2:00', amount: 0, technique: '打開閥門 / 下壓' },
+          { label: '注水浸泡', end: 120, amount: water, technique: '一次注入，輕攪拌' },
+          { label: '濾出', end: 180, amount: 0, technique: '打開閥門 / 下壓' },
         ];
       },
     },
@@ -266,7 +294,7 @@
   return {
     num, round, parseTime, formatTime,
     waterFromDose, doseFromWater, ratioOf, estimatedBeverage,
-    stagesTotal, cumulative, scaleStages, stageIndexAt, POUR_TEMPLATES, buildTemplate,
+    stagesTotal, cumulative, scaleStages, stageEnd, stageIndexAt, migrateStages, POUR_TEMPLATES, buildTemplate,
     METHOD_RANGES, GRINDER_PRESETS, canConvert, grinderMicrons, grinderSetting,
     convertGrind, calibrateZero, methodsForMicrons, grinderRangeTable,
     restDays,
