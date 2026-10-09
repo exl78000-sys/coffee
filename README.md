@@ -56,41 +56,63 @@
 
 ## 使用方式
 
-### 在電腦上
-直接用瀏覽器打開 `index.html` 即可使用（離線快取功能需透過網址開啟）。
+App 有三種版本，介面一樣，差在資料存哪裡：
 
-或在本機啟動一個簡單伺服器：
+| 版本 | 資料存在 | 適合 |
+|---|---|---|
+| **Google 試算表版（建議）** | 你自己的 Google 試算表，一列一筆，可以直接打開看 | 長期使用、資料自己掌控 |
+| claude.ai 頁面版 | claude.ai 頁面的雲端資料庫 | 想用「拍照自動讀取豆子規格」 |
+| 一般網頁版 | 該裝置瀏覽器的 localStorage | 試玩、離線 |
 
-```bash
-npm start          # 等同 python3 -m http.server 8000
-# 打開 http://localhost:8000
-```
+### 存到 Google 試算表（建議）
+
+需要用**電腦**做一次設定，大約 5 分鐘：
+
+1. 打開 <https://sheets.new> 建立新試算表，取名「咖啡沖煮記錄」。
+2. 選單「**擴充功能 → Apps Script**」。
+3. 把編輯器裡 `程式碼.gs`（Code.gs）的內容全部刪掉，貼上本 repo 的 [`gas/Code.gs`](gas/Code.gs)。
+4. 左側「檔案」旁的 **＋ → HTML**，名稱輸入 `Index`（不用打 .html），把內容全部刪掉，貼上 [`gas/Index.html`](gas/Index.html) 的全部內容。
+5. 按儲存（磁碟圖示）。
+6. 右上「**部署 → 新增部署作業**」，左邊齒輪選「**網頁應用程式**」：
+   - 執行身分：**我**
+   - 誰可以存取：**只有我自己**
+   - 按「部署」。
+7. 第一次會要求授權：選你的帳號 → 允許。若出現「Google 尚未驗證這個應用程式」，點「進階 → 前往…（不安全）」。這是你自己的程式，而且只能存取這一份試算表。
+8. 複製「網頁應用程式」的網址，用手機打開，加入書籤或主畫面。
+
+之後在 App 裡新增的豆子、磨豆機、沖煮記錄會出現在試算表的「豆子」「磨豆機」「沖煮記錄」分頁。
+
+- 可以直接在試算表修改文字和數字（例如補寫心得），下次打開 App 就會讀到。
+- 最右邊的「其他資料（請勿修改）」欄存的是分段等細節，請不要改。
+- 「豆子」「分段」這類摘要欄只是方便閱讀，改了不會被讀回。
+- 照片存在隱藏的「_照片」分頁。
+- 可以自己加欄位，App 不會動它。
+
+**更新程式**：換掉 `Index.html`（或 `Code.gs`）內容後，到「部署 → 管理部署作業 → 編輯（鉛筆）→ 版本選『新版本』→ 部署」，網址不變。
+
+**從其他版本搬資料**：在舊版本「設定 → 匯出備份」，在試算表版「設定 → 匯入」。
 
 ### 發佈成 claude.ai 頁面
-`npm run build:artifact` 會把整個 App 打包成單一檔案 `dist/coffee-log.html`，可以發佈成 claude.ai 的私人頁面。這個版本的資料存在頁面的雲端資料庫，用同一個帳號在手機或電腦打開都是同一份資料。
+`npm run build` 會產生 `dist/coffee-log.html`，可以發佈成 claude.ai 的私人頁面。資料存在頁面的雲端資料庫；這個版本可以拍照後請 Claude 讀取豆子規格自動填入。
 
-### 在手機上（GitHub Pages）
-把這個 repo 用 **GitHub Pages** 發佈（Settings → Pages → Source 選 `main` branch 的根目錄），用手機開啟網址後：
-- iPhone：Safari 分享 → 加入主畫面
-- Android：Chrome 選單 → 安裝應用程式
-
-之後就像一般 App 一樣可以離線使用。
-
-> ⚠️ 一般網頁版的資料只存在該裝置的瀏覽器中。換手機或清除瀏覽資料前，請到「設定」匯出備份，再到新裝置匯入。
+### 一般網頁版
+直接用瀏覽器打開 `index.html`，或 `npm start` 後打開 <http://localhost:8000>。資料只存在該裝置的瀏覽器中，換裝置前請先匯出備份。
 
 ## 開發
 
-純 HTML / CSS / JavaScript，沒有建置步驟。
+純 HTML / CSS / JavaScript。一般網頁版不用建置；改完程式後執行 `npm run build` 重新產生試算表版與 claude.ai 版的單一檔案。
 
 ```
 index.html            頁面骨架與底部導覽
 css/style.css         樣式（含深色模式）
 js/calc.js            純計算：水粉比、分段縮放、研磨換算、範本（可在 Node 測試）
-js/store.js           資料層（localStorage 或 claude.ai 頁面資料庫、匯入匯出）
-scripts/build-artifact.js  打包成單一 HTML，供 claude.ai 頁面使用
+js/store.js           資料層（Google 試算表 / claude.ai 頁面資料庫 / localStorage、匯入匯出）
+gas/Code.gs           Google 試算表版的伺服器端（Apps Script）
+gas/Index.html        Google 試算表版的頁面（由 npm run build 產生）
+scripts/build.js      打包成單一 HTML：dist/coffee-log.html 與 gas/Index.html
 js/app.js             各頁面畫面與互動
 sw.js                 離線快取（修改檔案後請調整 VERSION）
-tests/calc.test.js    計算函式單元測試
+tests/                計算、試算表欄位對應、Apps Script 後端的單元測試
 ```
 
 執行測試：
@@ -104,4 +126,3 @@ npm test
 - 義式：記錄研磨後重量、萃取曲線、TDS／萃取率
 - 摩卡壺：不同壺型的粉槽容量預設
 - 統計圖：同一支豆子的評分隨研磨／水溫的變化
-- 雲端同步（目前只存在本機）

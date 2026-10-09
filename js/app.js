@@ -42,7 +42,11 @@
   const RATIO_PRESETS = [['手沖 1:15', 15], ['手沖 1:16', 16], ['手沖 1:17', 17], ['義式 1:2', 2], ['摩卡壺 1:10', 10], ['冷萃 1:8', 8]];
 
   // 嵌在 claude.ai 頁面時不能改網址，改用內部路由
-  const EMBED = !!window.COFFEE_EMBED;
+  // 執行環境：claude（claude.ai 頁面）、gas（Google 試算表的 Apps Script）、web（一般網頁）
+  const MODE = window.COFFEE_MODE || 'web';
+  const EMBED = MODE !== 'web'; // 內嵌在別的頁面裡，不能改網址，用內部路由
+  const CLAUDE = MODE === 'claude';
+  const SHEET = MODE === 'gas';
   let currentHash = (!EMBED && location.hash) || '#/brews';
 
   let cleanup = null; // 離開頁面時要執行的收尾（計時器）
@@ -87,6 +91,7 @@
 
   function mount(html) {
     view.innerHTML = html;
+    hydratePhotos(view);
     return view.firstElementChild;
   }
 
@@ -207,10 +212,26 @@
     return C.GRINDER_PRESETS.find((p) => p.name.toLowerCase() === n) || null;
   }
 
-  function beanPhotoSrc(bean) {
-    if (!bean) return '';
-    if (bean.photoId) return '/_blob/' + bean.photoId;
-    return bean.photo || '';
+  function hasPhoto(bean) {
+    return !!(bean && (bean.photoId || bean.photoKey || bean.photo));
+  }
+
+  /** 豆子照片的 <img>；存在試算表的照片先放空殼，之後由 hydratePhotos 載入 */
+  function photoImg(bean, cls, alt) {
+    if (!hasPhoto(bean)) return '';
+    if (bean.photoKey) return `<img class="${cls}" data-sheet-photo="${esc(bean.photoKey)}" alt="${esc(alt)}">`;
+    const src = bean.photoId ? '/_blob/' + bean.photoId : bean.photo;
+    return `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`;
+  }
+
+  const photoCache = {};
+  function hydratePhotos(scope) {
+    if (!SHEET) return;
+    $$('img[data-sheet-photo]:not([src])', scope).forEach((img) => {
+      const key = img.dataset.sheetPhoto;
+      const p = photoCache[key] || (photoCache[key] = S.gas('getPhoto', key).catch(() => ''));
+      p.then((src) => { if (src) img.src = src; else img.remove(); });
+    });
   }
 
   function summary(b) {
@@ -819,9 +840,8 @@
         const rd = C.restDays(b.roastDate);
         const rem = remaining(b);
         const best = bestBrew(b.id);
-        const src = beanPhotoSrc(b);
         return `<a class="card bean-card ${b.archived ? 'archived' : ''}" href="#/bean/${b.id}">
-          ${src ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">` : ''}
+          ${photoImg(b, 'thumb', '')}
           <div class="grow">
             <div class="row"><strong class="grow">${esc(b.name)}</strong>${b.roast ? `<span class="tag">${esc(b.roast)}</span>` : ''}</div>
             <div class="meta">${esc([b.roaster, b.process].filter(Boolean).join(' · '))}</div>
@@ -844,7 +864,6 @@
     const brews = beanBrews(id);
     const rd = C.restDays(bean.roastDate);
     const rem = remaining(bean);
-    const src = beanPhotoSrc(bean);
     const methods = METHOD_KEYS.filter((k) => brews.some((b) => b.method === k));
     const info = [['烘豆商', bean.roaster], ['產區', bean.origin], ['品種', bean.variety], ['處理法', bean.process],
       ['烘焙度', bean.roast], ['烘焙日', bean.roastDate && `${bean.roastDate}（第 ${rd} 天）`],
@@ -854,11 +873,11 @@
     const page = mount(`<div class="page">
       ${header(bean.name, { back: '#/beans', action: `<a class="btn small" href="#/bean/${id}/edit">編輯</a>` })}
       <section class="card">
-        ${src ? `<img class="bean-photo" src="${esc(src)}" alt="${esc(bean.name)} 包裝照片">` : ''}
+        ${photoImg(bean, 'bean-photo', bean.name + ' 包裝照片')}
         ${info.length ? `<div class="stats">${info.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
         ${bean.flavor ? `<p><b>風味標示：</b>${esc(bean.flavor)}</p>` : ''}
         ${bean.notes ? `<p class="muted">${esc(bean.notes)}</p>` : ''}
-        ${!info.length && !bean.flavor && !src ? `<p class="muted">還沒有規格資料，<a href="#/bean/${id}/edit">拍照或填寫</a>。</p>` : ''}
+        ${!info.length && !bean.flavor && !hasPhoto(bean) ? `<p class="muted">還沒有規格資料，<a href="#/bean/${id}/edit">拍照或填寫</a>。</p>` : ''}
       </section>
       ${methods.map((k) => {
         const best = bestBrew(id, k);
@@ -894,7 +913,7 @@
       } else if (act.dataset.act === 'del') {
         const msg = brews.length ? `這支豆子有 ${brews.length} 筆記錄，刪除後記錄會保留但顯示為「未指定豆子」。確定刪除？` : '確定刪除這支豆子？';
         if (await ask(msg, '刪除', true)) {
-          if (bean.photoId) deleteAsset(bean.photoId);
+          deletePhoto(bean);
           S.remove('beans', id);
           go('#/beans');
         }
@@ -905,14 +924,21 @@
   // ---------- 照片 ----------
 
   async function useCap(name) {
-    if (!EMBED || !(window.claude && window.claude.use)) return null;
+    if (!CLAUDE || !(window.claude && window.claude.use)) return null;
     try { return await window.claude.use(name); } catch (e) { return null; }
   }
 
-  async function deleteAsset(assetId) {
-    const assets = await useCap('assets');
-    if (assets) assets.delete(assetId).catch(() => {});
+  /** 刪除豆子照片檔（claude.ai 的檔案或試算表的照片分頁）；data URL 不用處理 */
+  async function deletePhoto(ref) {
+    if (!ref) return;
+    if (ref.photoKey && SHEET) S.gas('deletePhoto', ref.photoKey).catch(() => {});
+    if (ref.photoId) {
+      const assets = await useCap('assets');
+      if (assets) assets.delete(ref.photoId).catch(() => {});
+    }
   }
+
+  const samePhoto = (a, b) => !!a && !!b && ((a.photoId && a.photoId === b.photoId) || (a.photoKey && a.photoKey === b.photoKey));
 
   /** 縮小照片並轉成 JPEG */
   function shrinkImage(file, maxSide, quality) {
@@ -978,9 +1004,9 @@
     const editing = id ? S.get('beans', id) : null;
     if (id && !editing) return notFound();
     const b = editing ? clone(editing) : { roastDate: '' };
-    const oldPhotoId = editing && editing.photoId;
+    const oldPhoto = editing && hasPhoto(editing) ? { photoId: editing.photoId, photoKey: editing.photoKey } : null;
     const text = (f, label, ph, extra) => field(label, `<input name="${f}" value="${esc(b[f])}" placeholder="${esc(ph || '')}" ${extra || ''}>`);
-    let previewSrc = beanPhotoSrc(b);
+    let previewSrc = ''; // 這次編輯新選的照片（立即預覽用）
     let reader = null;
 
     const page = mount(`<div class="page">
@@ -1025,10 +1051,14 @@
     const status = (msg) => { $('#photo-status', page).textContent = msg; };
 
     function renderPhoto() {
-      $('#photo-box', page).innerHTML = previewSrc
+      const box = $('#photo-box', page);
+      box.innerHTML = previewSrc
         ? `<img class="bean-photo" src="${esc(previewSrc)}" alt="豆子包裝照片">`
-        : `<div class="photo-empty">拍下包裝上的規格標籤${reader ? '，會自動讀取並填入下面的欄位' : '，方便日後對照'}</div>`;
-      $('[data-act="photo-del"]', page).hidden = !previewSrc;
+        : hasPhoto(b)
+          ? photoImg(b, 'bean-photo', '豆子包裝照片')
+          : `<div class="photo-empty">拍下包裝上的規格標籤${reader ? '，會自動讀取並填入下面的欄位' : '，方便日後對照'}</div>`;
+      hydratePhotos(box);
+      $('[data-act="photo-del"]', page).hidden = !hasPhoto(b);
     }
 
     /** 只填空白欄位，回傳填了幾個 */
@@ -1056,14 +1086,27 @@
       status('處理照片中…');
       try {
         const big = await shrinkImage(file, 1600, 0.85);
+        const before = { photoId: b.photoId, photoKey: b.photoKey };
         let stored = false;
-        const assets = await useCap('assets');
+        if (SHEET) {
+          // 存到試算表的照片分頁
+          const dataUrl = await blobToDataUrl(await shrinkImage(file, 1000, 0.75));
+          status('上傳照片到試算表…');
+          const key = await S.gas('savePhoto', dataUrl);
+          photoCache[key] = Promise.resolve(dataUrl);
+          Object.assign(b, { photoKey: key });
+          delete b.photoId;
+          delete b.photo;
+          previewSrc = dataUrl;
+          stored = true;
+        }
+        const assets = stored ? null : await useCap('assets');
         if (assets) {
           try {
             const r = await assets.upload(big, { type: 'image/jpeg' });
-            if (b.photoId && b.photoId !== oldPhotoId) deleteAsset(b.photoId); // 這次編輯中上傳過、又換掉的
             b.photoId = r.id;
             delete b.photo;
+            delete b.photoKey;
             previewSrc = r.url;
             stored = true;
           } catch (e) { /* 改存縮圖 */ }
@@ -1071,8 +1114,10 @@
         if (!stored) {
           b.photo = await blobToDataUrl(await shrinkImage(file, 900, 0.7));
           delete b.photoId;
+          delete b.photoKey;
           previewSrc = b.photo;
         }
+        if (!samePhoto(before, oldPhoto)) deletePhoto(before); // 這次編輯中上傳過、又換掉的
         renderPhoto();
         if (!reader) { status(''); return; }
         status('正在讀取規格…（第一次會詢問是否允許 Claude 讀取照片）');
@@ -1093,8 +1138,9 @@
       if (act.dataset.act === 'camera') $('#cam-in', page).click();
       else if (act.dataset.act === 'pick') $('#pick-in', page).click();
       else if (act.dataset.act === 'photo-del') {
-        if (b.photoId && b.photoId !== oldPhotoId) deleteAsset(b.photoId);
+        if (!samePhoto(b, oldPhoto)) deletePhoto(b);
         delete b.photoId;
+        delete b.photoKey;
         delete b.photo;
         previewSrc = '';
         renderPhoto();
@@ -1111,7 +1157,7 @@
       e.preventDefault();
       const fd = new FormData(form);
       fd.forEach((v, k) => { if (k) b[k] = k === 'weight' ? C.num(v) : String(v).trim(); });
-      if (oldPhotoId && oldPhotoId !== b.photoId) deleteAsset(oldPhotoId);
+      if (oldPhoto && !samePhoto(oldPhoto, b)) deletePhoto(oldPhoto);
       S.upsert('beans', b);
       go('#/bean/' + b.id);
     });
@@ -1531,9 +1577,12 @@
       </section>
 
       <section class="card"><h2>資料與備份</h2>
-        <p class="muted small">${S.backend === 'db'
-          ? '資料存在這個頁面的雲端資料庫，用同一個帳號在手機或電腦打開都看得到。仍建議偶爾匯出備份。'
-          : '資料只存在這台裝置的瀏覽器裡。換手機、清除瀏覽資料前，請先匯出備份。'}</p>
+        <p class="muted small">${S.backend === 'sheet'
+          ? '資料存在你的 Google 試算表（「豆子」「磨豆機」「沖煮記錄」分頁，一列一筆）。可以直接在試算表查看或修改文字與數字；最右邊的「其他資料」欄請勿修改。'
+          : S.backend === 'db'
+            ? '資料存在這個頁面的雲端資料庫，用同一個帳號在手機或電腦打開都看得到。仍建議偶爾匯出備份。'
+            : '資料只存在這台裝置的瀏覽器裡。換手機、清除瀏覽資料前，請先匯出備份。'}</p>
+        ${S.backend === 'sheet' ? '<p id="sheet-link"></p>' : ''}
         <p>${S.all('beans').length} 支豆子 · ${S.all('brews').length} 筆記錄 · ${grinders.length} 台磨豆機</p>
         <div class="actions">
           <button class="btn primary" data-act="export">匯出備份 (JSON)</button>
@@ -1551,6 +1600,13 @@
         <p class="muted small">研磨粒徑與各沖煮法範圍為常見參考值，不同豆子、烘焙度與器材都會影響，請以口感為準。</p>
       </section>
     </div>`);
+
+    if (S.backend === 'sheet') {
+      S.gas('getSheetUrl').then((url) => {
+        const el = $('#sheet-link', page);
+        if (el && url) el.innerHTML = `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">打開 Google 試算表</a>`;
+      }).catch(() => {});
+    }
 
     let importMode = 'merge';
     const file = $('#import-file', page);
@@ -1594,7 +1650,8 @@
   }
 
   async function download(name, text) {
-    if (EMBED) {
+    if (SHEET) return showText('備份內容（複製後存成 .json 檔）', text);
+    if (CLAUDE) {
       const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
       if (!dl) return showText('備份內容（複製後存成 .json 檔）', text);
       try {

@@ -1,0 +1,3072 @@
+<!DOCTYPE html>
+<!-- 由 scripts/build.js 產生，請勿直接修改；整份貼到 Apps Script 的 Index.html -->
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+<body>
+<style>
+:root {
+  --bg: #f7f1ea;
+  --surface: #fffdfa;
+  --surface-2: #f1e8de;
+  --text: #2b211b;
+  --muted: #85766a;
+  --line: #e6dace;
+  --accent: #8a5426;
+  --accent-text: #fff;
+  --accent-soft: #f3e2d0;
+  --gold: #c58a1d;
+  --danger: #b4412f;
+  --warn-bg: #fdf0d8;
+  --pourover: #8a5426;
+  --immersion: #5e7a4a;
+  --espresso: #6b3a2a;
+  --moka: #3f6377;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 2px 8px rgba(60, 40, 20, .05);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1613;
+    --surface: #251e1a;
+    --surface-2: #2f2621;
+    --text: #f1e8df;
+    --muted: #a8988a;
+    --line: #3a2f29;
+    --accent: #d39a62;
+    --accent-text: #1b1613;
+    --accent-soft: #3b2c21;
+    --gold: #e2ac45;
+    --danger: #e0715f;
+    --warn-bg: #3d3018;
+    --pourover: #d39a62;
+    --immersion: #9cbc84;
+    --espresso: #d08a72;
+    --moka: #84b3cc;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1613;
+  --surface: #251e1a;
+  --surface-2: #2f2621;
+  --text: #f1e8df;
+  --muted: #a8988a;
+  --line: #3a2f29;
+  --accent: #d39a62;
+  --accent-text: #1b1613;
+  --accent-soft: #3b2c21;
+  --gold: #e2ac45;
+  --danger: #e0715f;
+  --warn-bg: #3d3018;
+  --pourover: #d39a62;
+  --immersion: #9cbc84;
+  --espresso: #d08a72;
+  --moka: #84b3cc;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+a { color: var(--accent); }
+
+h1, h2 { margin: 0; line-height: 1.3; }
+h1 { font-size: 1.35rem; }
+h2 { font-size: 1.02rem; margin-bottom: .6rem; }
+
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 16px 24px;
+}
+
+/* ---------- 頁首 ---------- */
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top)) 0 12px;
+  background: var(--bg);
+}
+.top h1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.back {
+  font-size: 2rem;
+  line-height: 1;
+  text-decoration: none;
+  padding: 0 8px 4px 0;
+}
+
+.sub { margin: -4px 0 10px; }
+
+/* ---------- 卡片與列表 ---------- */
+
+.card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+}
+a.card:active { transform: scale(.99); }
+
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: .6rem; }
+.card-head h2 { margin: 0; }
+
+.list { display: flex; flex-direction: column; }
+.list .card { margin-bottom: 10px; }
+.list.tight { gap: 0; }
+
+.item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+.item:last-child { border-bottom: 0; }
+
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.meta { margin: 4px 0; font-size: .92rem; color: var(--text); opacity: .85; }
+.muted { color: var(--muted); }
+.small { font-size: .82rem; }
+.center { text-align: center; }
+.mono { font-variant-numeric: tabular-nums; }
+.r { text-align: right; }
+
+.brew-card .row:first-child strong,
+.bean-card strong { font-size: 1.02rem; }
+.bean-card.archived { opacity: .55; }
+
+.section-title { margin: 20px 0 10px; font-size: .95rem; color: var(--muted); }
+
+.empty { text-align: center; color: var(--muted); padding: 32px 8px; }
+
+.tag {
+  display: inline-block;
+  font-size: .75rem;
+  padding: 1px 8px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--text);
+  white-space: nowrap;
+}
+.tag.m-pourover { background: color-mix(in srgb, var(--pourover) 16%, transparent); color: var(--pourover); }
+.tag.m-immersion { background: color-mix(in srgb, var(--immersion) 18%, transparent); color: var(--immersion); }
+.tag.m-espresso { background: color-mix(in srgb, var(--espresso) 18%, transparent); color: var(--espresso); }
+.tag.m-moka { background: color-mix(in srgb, var(--moka) 18%, transparent); color: var(--moka); }
+
+.best { color: var(--gold); font-size: .82rem; font-weight: 600; }
+.stars { color: var(--gold); letter-spacing: 1px; }
+.stars .off { color: var(--line); }
+.big-stars { font-size: 1.4rem; margin-bottom: 6px; }
+
+.note {
+  background: var(--warn-bg);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  font-size: .92rem;
+}
+
+/* ---------- 統計格 ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px 16px;
+}
+.stats div { display: flex; flex-direction: column; min-width: 0; }
+.stats span { font-size: .78rem; color: var(--muted); }
+.stats b { font-weight: 600; overflow-wrap: anywhere; }
+
+.bars { display: grid; gap: 6px; margin: 8px 0 12px; }
+.bar { display: grid; grid-template-columns: 3em 1fr 1.5em; align-items: center; gap: 8px; font-size: .9rem; }
+.bar .track { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.bar .track div { height: 100%; background: var(--accent); border-radius: 99px; }
+
+/* ---------- 表格 ---------- */
+
+.table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: 6px 0; }
+.table th { text-align: left; font-weight: 500; color: var(--muted); font-size: .78rem; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.table td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.table tr:last-child td { border-bottom: 0; }
+.table th.r, .table td.r { text-align: right; white-space: nowrap; }
+.table tr.hl td { background: var(--accent-soft); }
+.scroll-x { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+.scroll-x .table { min-width: max-content; }
+
+/* ---------- 按鈕 ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(.98); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); }
+.btn.danger-fill { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+.btn.small { min-height: 34px; padding: 4px 12px; font-size: .88rem; }
+.btn.block { display: flex; width: 100%; margin-top: 8px; }
+.btn.big { min-height: 64px; min-width: 120px; font-size: 1.2rem; border-radius: 99px; }
+.btn:disabled { opacity: .45; }
+
+.icon-btn {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 1.05rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.chips.scroll { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px 10px; padding: 0 16px; scrollbar-width: none; }
+.chip {
+  flex: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 99px;
+  padding: 5px 13px;
+  font: inherit;
+  font-size: .88rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+/* ---------- 表單 ---------- */
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; min-width: 0; }
+.field > span { font-size: .8rem; color: var(--muted); }
+
+input, select, textarea, output {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-width: 0;
+}
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 10px;
+  min-height: 42px;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 0; border-color: var(--accent); }
+textarea { resize: vertical; }
+output { display: block; padding: 9px 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+input[type="checkbox"] { width: auto; min-height: 0; accent-color: var(--accent); }
+input[type="range"] { padding: 0; border: 0; background: none; accent-color: var(--accent); min-height: 30px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 10px; }
+
+.hint { font-size: .88rem; color: var(--muted); margin: -2px 0 10px; }
+.hint > * + * { margin-top: 6px; }
+.hint:empty { display: none; }
+.hint b { color: var(--text); }
+.hint.warn { color: var(--danger); }
+.hint .btn { display: flex; justify-content: flex-start; color: var(--text); text-align: left; height: auto; }
+
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+.center-check { display: flex; justify-content: center; margin: 12px 0; }
+
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 12px;
+}
+.seg label, .seg a { position: relative; text-align: center; }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; opacity: 0; pointer-events: none; }
+.seg span, .seg a {
+  display: block;
+  padding: 7px 4px;
+  border-radius: 9px;
+  font-size: .92rem;
+  cursor: pointer;
+  color: var(--text);
+  text-decoration: none;
+}
+.seg input:checked + span, .seg a.on { background: var(--surface); box-shadow: var(--shadow); font-weight: 600; }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); }
+
+.stage {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--bg);
+}
+.stage-line { display: flex; align-items: center; gap: 8px; }
+.stage-no {
+  flex: none;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: .85rem;
+  font-weight: 700;
+}
+.mini { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.mini input { text-align: right; font-variant-numeric: tabular-nums; }
+.mini span { flex: none; font-size: .85rem; color: var(--muted); }
+.stage input { background: var(--surface); }
+.stage-line .icon-btn { flex: none; width: 32px; }
+.stage-line .icon-btn[aria-expanded="true"] { color: var(--accent); }
+.stage-sub { margin: 4px 0 0 34px; }
+.stage-sub:empty { display: none; }
+.stage-more { display: grid; gap: 6px; margin: 8px 0 2px 34px; }
+.stage-help { margin: -4px 0 10px; }
+
+details.tpl { margin-top: 10px; }
+details.tpl summary { cursor: pointer; font-size: .88rem; color: var(--muted); padding: 4px 0; }
+details.tpl .chips { margin: 8px 0 0; }
+
+.bean-photo {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: var(--surface-2);
+  margin-bottom: 12px;
+}
+.photo-empty {
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  padding: 22px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .9rem;
+}
+.bean-card { display: flex; gap: 12px; align-items: flex-start; }
+.thumb {
+  flex: none;
+  width: 56px; height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+input.filled, select.filled, textarea.filled { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--bg)); }
+
+.star-input { display: flex; gap: 4px; margin-bottom: 8px; }
+.star {
+  font-size: 2rem;
+  line-height: 1;
+  border: 0;
+  background: none;
+  color: var(--line);
+  cursor: pointer;
+  padding: 2px;
+}
+.star.on { color: var(--gold); }
+
+.slider { display: grid; grid-template-columns: 3em 1fr 1.5em; align-items: center; gap: 8px; margin-bottom: 4px; }
+.slider output { padding: 0; text-align: center; }
+
+.form-actions {
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 0;
+  background: linear-gradient(to bottom, transparent, var(--bg) 30%);
+}
+.form-actions .btn.primary { min-width: 120px; }
+.form-actions .danger { margin-right: auto; }
+
+.filter { margin-bottom: 12px; }
+
+/* ---------- 計時器 ---------- */
+
+.clock {
+  font-size: clamp(4rem, 22vw, 6.5rem);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin: 8px 0;
+  letter-spacing: -.02em;
+}
+.clock.over { color: var(--danger); }
+
+.now { border-color: var(--accent); background: var(--accent-soft); }
+.now-label { font-size: 1.35rem; font-weight: 700; }
+.now-amount { font-size: 1.1rem; margin: 4px 0; }
+.now-amount b { font-size: 1.5rem; }
+.now-end { font-size: 1rem; margin: 2px 0 4px; }
+.now-end b { font-size: 1.3rem; }
+.now-tech { font-size: 1rem; }
+.now-next { margin-top: 8px; font-size: .9rem; color: var(--muted); }
+
+.timer-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 16px 0; }
+
+.stage-list { list-style: none; padding: 0; margin: 0 0 12px; }
+.stage-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.stage-list li small { display: block; color: var(--muted); font-size: .8rem; font-weight: 400; }
+.stage-list li .stage-no { margin-top: 1px; }
+.stage-list li.active { background: var(--surface); border-color: var(--accent); font-weight: 600; }
+.stage-list li.done { opacity: .45; }
+
+.link-card strong { font-size: 1.05rem; }
+
+/* ---------- 底部導覽 ---------- */
+
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar a {
+  flex: 1;
+  max-width: 136px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0 6px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: .72rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.tabbar svg {
+  width: 24px; height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tabbar a.active { color: var(--accent); font-weight: 600; }
+
+/* ---------- 確認視窗 ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--text) 45%, transparent);
+}
+.modal-box {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+}
+.modal-box p { margin: 0 0 14px; }
+.modal-box textarea { font-family: ui-monospace, Menlo, monospace; font-size: .78rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+.btn:focus-visible, .chip:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: none; }
+  .btn:active, a.card:active { transform: none; }
+}
+
+/* ---------- 提示 ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 18px;
+  border-radius: 99px;
+  font-size: .9rem;
+  opacity: 0;
+  transition: .25s;
+  z-index: 20;
+  max-width: calc(100% - 32px);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 380px) {
+  .grid3 { grid-template-columns: 1fr 1fr; }
+}
+
+
+</style>
+<main id="view" aria-live="polite"></main>
+
+  <nav class="tabbar" aria-label="主選單">
+    <a href="#/brews" data-tab="brews">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h10a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+      <span>記錄</span>
+    </a>
+    <a href="#/beans" data-tab="beans">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="6.5" ry="9.5" transform="rotate(35 12 12)"/><path d="M8 18c3.5-2.5 1.5-9 8-12"/></svg>
+      <span>豆子</span>
+    </a>
+    <a href="#/timer" data-tab="timer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4"/></svg>
+      <span>計時</span>
+    </a>
+    <a href="#/tools" data-tab="tools">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 15.5h.01M12 15.5h.01M15 15.5h.01M9 18.5h.01M12 18.5h.01M15 18.5h.01"/></svg>
+      <span>工具</span>
+    </a>
+    <a href="#/settings" data-tab="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+      <span>設定</span>
+    </a>
+  </nav>
+<script>window.COFFEE_MODE = 'gas';</script>
+<script>
+/*
+ * 純計算函式：水粉比、分段縮放、研磨刻度換算、沖煮範本。
+ * 同時支援瀏覽器（掛在 window.Calc）與 Node（module.exports，供測試使用）。
+ */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.Calc = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---------- 通用 ----------
+
+  function num(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function round(n, step) {
+    if (n === null || n === undefined || !Number.isFinite(n)) return null;
+    const s = step || 1;
+    const r = Math.round(n / s) * s;
+    // 避免 0.1 + 0.2 之類的浮點尾數
+    const decimals = (String(s).split('.')[1] || '').length;
+    return Number(r.toFixed(decimals));
+  }
+
+  /** "2:30" / "2'30" / "150" → 150 秒；無法解析回傳 null */
+  function parseTime(text) {
+    if (text === null || text === undefined) return null;
+    if (typeof text === 'number') return Number.isFinite(text) ? text : null;
+    const t = String(text).trim();
+    if (!t) return null;
+    const m = t.match(/^(\d+)\s*[:：'′分]\s*(\d{1,2})\s*(?:秒|"|″)?$/);
+    if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const s = t.match(/^(\d+(?:\.\d+)?)\s*(?:s|秒)?$/i);
+    if (s) return Math.round(parseFloat(s[1]));
+    return null;
+  }
+
+  /** 150 → "2:30" */
+  function formatTime(sec) {
+    if (sec === null || sec === undefined || !Number.isFinite(sec)) return '';
+    const neg = sec < 0;
+    const total = Math.abs(Math.round(sec));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return (neg ? '-' : '') + m + ':' + String(s).padStart(2, '0');
+  }
+
+  // ---------- 水粉比 ----------
+
+  function waterFromDose(dose, ratio) {
+    dose = num(dose); ratio = num(ratio);
+    if (dose === null || ratio === null) return null;
+    return round(dose * ratio, 1);
+  }
+
+  function doseFromWater(water, ratio) {
+    water = num(water); ratio = num(ratio);
+    if (water === null || !ratio) return null;
+    return round(water / ratio, 0.1);
+  }
+
+  function ratioOf(dose, water) {
+    dose = num(dose); water = num(water);
+    if (!dose || water === null) return null;
+    return round(water / dose, 0.1);
+  }
+
+  /** 濾泡式預估萃取液重量：咖啡粉約吸附 2 倍重量的水 */
+  function estimatedBeverage(water, dose, absorption) {
+    water = num(water); dose = num(dose);
+    if (water === null || dose === null) return null;
+    const a = absorption === undefined ? 2 : absorption;
+    return Math.max(0, round(water - dose * a, 1));
+  }
+
+  // ---------- 分段注水 ----------
+
+  function stagesTotal(stages) {
+    return (stages || []).reduce((sum, s) => sum + (num(s.amount) || 0), 0);
+  }
+
+  /** 每一段結束時的累計水量 */
+  function cumulative(stages) {
+    let acc = 0;
+    return (stages || []).map((s) => (acc += num(s.amount) || 0));
+  }
+
+  /**
+   * 依新的總水量等比例縮放各段水量（取整數克），
+   * 並把四捨五入的誤差補到最後一段有水量的段落，確保總和正好等於 newTotal。
+   */
+  function scaleStages(stages, newTotal) {
+    newTotal = num(newTotal);
+    const list = (stages || []).map((s) => Object.assign({}, s));
+    const oldTotal = stagesTotal(list);
+    if (!oldTotal || newTotal === null) return list;
+    const k = newTotal / oldTotal;
+    list.forEach((s) => {
+      const a = num(s.amount);
+      if (a !== null) s.amount = Math.round(a * k);
+    });
+    const diff = Math.round(newTotal) - stagesTotal(list);
+    if (diff !== 0) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (num(list[i].amount)) { list[i].amount += diff; break; }
+      }
+    }
+    return list;
+  }
+
+  /** 段落的結束秒數（每段的秒數都是「這段結束」的時間點） */
+  function stageEnd(stage) {
+    return stage ? parseTime(stage.end) : null;
+  }
+
+  /**
+   * 計時器用：回傳目前所在段落索引 —— 第一個「結束時間還沒到」的段落。
+   * 全部結束時回傳 stages.length。
+   */
+  function stageIndexAt(stages, elapsedSec) {
+    const list = stages || [];
+    for (let i = 0; i < list.length; i++) {
+      const end = stageEnd(list[i]);
+      if (end === null || elapsedSec < end) return i;
+    }
+    return list.length;
+  }
+
+  /**
+   * 舊格式（每段記開始時間 start）轉成新格式（每段記結束秒數 end）：
+   * 每段結束 = 下一段開始；最後一段用總時間，沒有就開始 + 30 秒。
+   */
+  function migrateStages(stages, totalTime) {
+    const list = stages || [];
+    if (!list.some((s) => s && s.start !== undefined && s.end === undefined)) return list;
+    const total = parseTime(totalTime);
+    return list.map((s, i) => {
+      const out = Object.assign({}, s);
+      const start = parseTime(s.start);
+      const next = list[i + 1] ? parseTime(list[i + 1].start) : null;
+      if (out.end === undefined) {
+        out.end = next !== null ? next : total !== null && start !== null && total > start ? total : start !== null ? start + 30 : null;
+      }
+      delete out.start;
+      return out;
+    });
+  }
+
+  const POUR_TEMPLATES = {
+    three: {
+      label: '三段式',
+      build(dose, water) {
+        const bloom = Math.round(dose * 2);
+        const second = Math.round(water * 0.6) - bloom;
+        return [
+          { label: '悶蒸', end: 40, amount: bloom, technique: '中心往外繞圈，確保粉層全濕' },
+          { label: '第二段', end: 80, amount: second, technique: '中速繞圈' },
+          { label: '第三段', end: 120, amount: water - bloom - second, technique: '中心小圈注水' },
+        ];
+      },
+    },
+    four6: {
+      label: '4:6 法',
+      build(dose, water) {
+        const p = Math.round(water * 0.2);
+        return [
+          { label: '第 1 注', end: 45, amount: p, technique: '前 40% 調整酸甜' },
+          { label: '第 2 注', end: 90, amount: p, technique: '' },
+          { label: '第 3 注', end: 130, amount: p, technique: '後 60% 調整濃度' },
+          { label: '第 4 注', end: 160, amount: p, technique: '' },
+          { label: '第 5 注', end: 210, amount: water - p * 4, technique: '' },
+        ];
+      },
+    },
+    single: {
+      label: '一刀流',
+      build(dose, water) {
+        const bloom = Math.round(dose * 2);
+        return [
+          { label: '悶蒸', end: 30, amount: bloom, technique: '繞圈注水' },
+          { label: '一次注完', end: 120, amount: water - bloom, technique: '細水柱中心注水' },
+        ];
+      },
+    },
+    immersion: {
+      label: '浸泡',
+      build(dose, water) {
+        return [
+          { label: '注水浸泡', end: 120, amount: water, technique: '一次注入，輕攪拌' },
+          { label: '濾出', end: 180, amount: 0, technique: '打開閥門 / 下壓' },
+        ];
+      },
+    },
+  };
+
+  function buildTemplate(key, dose, water) {
+    const t = POUR_TEMPLATES[key];
+    dose = num(dose); water = num(water);
+    if (!t || !dose || !water) return [];
+    return t.build(dose, Math.round(water));
+  }
+
+  // ---------- 研磨刻度 ----------
+
+  /*
+   * 以線性模型近似：粒徑(µm) ≈ 零點偏移 + 每格微米 × 格數。
+   * 各沖煮法的粒徑範圍為常見參考值，不同豆子、烘焙度、濾杯都會影響，
+   * 只能當起點，實際仍以口感微調。
+   */
+  const METHOD_RANGES = [
+    { key: 'espresso', label: '義式', min: 180, max: 380 },
+    { key: 'moka', label: '摩卡壺', min: 360, max: 660 },
+    { key: 'aeropress', label: '愛樂壓', min: 320, max: 960 },
+    { key: 'pourover', label: '手沖', min: 400, max: 900 },
+    { key: 'immersion', label: '法壓 / 浸泡', min: 690, max: 1300 },
+    { key: 'coldbrew', label: '冷萃', min: 800, max: 1400 },
+  ];
+
+  /* 常見手搖磨豆機的每格微米數（廠商或社群量測的近似值，以「總格數」計算，零點視為 0） */
+  const GRINDER_PRESETS = [
+    { key: 'c40', name: 'Comandante C40 MK4', micronsPerStep: 30, zeroMicrons: 0, precision: 1 },
+    { key: 'jxpro', name: '1Zpresso JX-Pro', micronsPerStep: 12.5, zeroMicrons: 0, precision: 1 },
+    { key: 'kultra', name: '1Zpresso K-Ultra', micronsPerStep: 20, zeroMicrons: 0, precision: 1 },
+    { key: 'kmax', name: '1Zpresso K-Max', micronsPerStep: 22, zeroMicrons: 0, precision: 1 },
+    { key: 'k6', name: 'Kingrinder K6', micronsPerStep: 16, zeroMicrons: 0, precision: 1 },
+  ];
+
+  function canConvert(grinder) {
+    return !!(grinder && num(grinder.micronsPerStep));
+  }
+
+  function grinderMicrons(grinder, setting) {
+    setting = num(setting);
+    if (!canConvert(grinder) || setting === null) return null;
+    return Math.round((num(grinder.zeroMicrons) || 0) + num(grinder.micronsPerStep) * setting);
+  }
+
+  function grinderSetting(grinder, microns) {
+    microns = num(microns);
+    if (!canConvert(grinder) || microns === null) return null;
+    const raw = (microns - (num(grinder.zeroMicrons) || 0)) / num(grinder.micronsPerStep);
+    return round(Math.max(0, raw), num(grinder.precision) || 1);
+  }
+
+  function convertGrind(fromGrinder, setting, toGrinder) {
+    const m = grinderMicrons(fromGrinder, setting);
+    return m === null ? null : grinderSetting(toGrinder, m);
+  }
+
+  /**
+   * 「A 磨的 X 格 = B 磨的 Y 格」校正：回傳 B 磨新的零點偏移（µm），
+   * 讓兩台在這個點上換算一致。
+   */
+  function calibrateZero(fromGrinder, fromSetting, toGrinder, toSetting) {
+    const m = grinderMicrons(fromGrinder, fromSetting);
+    toSetting = num(toSetting);
+    if (m === null || toSetting === null || !canConvert(toGrinder)) return null;
+    return Math.round(m - num(toGrinder.micronsPerStep) * toSetting);
+  }
+
+  function methodsForMicrons(microns) {
+    microns = num(microns);
+    if (microns === null) return [];
+    return METHOD_RANGES.filter((r) => microns >= r.min && microns <= r.max);
+  }
+
+  /** 某台磨豆機在各沖煮法的建議格數範圍 */
+  function grinderRangeTable(grinder) {
+    if (!canConvert(grinder)) return [];
+    return METHOD_RANGES.map((r) => ({
+      key: r.key,
+      label: r.label,
+      from: grinderSetting(grinder, r.min),
+      to: grinderSetting(grinder, r.max),
+    }));
+  }
+
+  // ---------- 豆子 ----------
+
+  /** 養豆天數（沖煮日 − 烘焙日） */
+  function restDays(roastDate, brewDate) {
+    if (!roastDate) return null;
+    const r = new Date(String(roastDate).slice(0, 10) + 'T00:00:00');
+    const b = brewDate ? new Date(String(brewDate).slice(0, 10) + 'T00:00:00') : new Date();
+    if (isNaN(r) || isNaN(b)) return null;
+    if (!brewDate) b.setHours(0, 0, 0, 0);
+    return Math.round((b - r) / 86400000);
+  }
+
+  return {
+    num, round, parseTime, formatTime,
+    waterFromDose, doseFromWater, ratioOf, estimatedBeverage,
+    stagesTotal, cumulative, scaleStages, stageEnd, stageIndexAt, migrateStages, POUR_TEMPLATES, buildTemplate,
+    METHOD_RANGES, GRINDER_PRESETS, canConvert, grinderMicrons, grinderSetting,
+    convertGrind, calibrateZero, methodsForMicrons, grinderRangeTable,
+    restDays,
+  };
+});
+
+</script>
+<script>
+/*
+ * 資料層。三種後端：
+ *   - sheet：Google 試算表（App 由 Google Apps Script 提供時）。三個分頁一列一筆，欄位可直接閱讀
+ *   - db：claude.ai 頁面的雲端資料庫（每筆資料一份文件：beans/<id>、grinders/<id>、brews/<id>）
+ *   - local：瀏覽器 localStorage（直接開檔 / 一般網址）
+ * 讀取一律走記憶體中的 state，寫入時同步存回後端。
+ */
+(function (root) {
+  'use strict';
+
+  const KEY = 'coffee-log-v1';
+  const COLLECTIONS = ['beans', 'grinders', 'brews'];
+  const MODE = root.COFFEE_MODE || 'web';
+
+  function empty() {
+    return { version: 1, beans: [], grinders: [], brews: [] };
+  }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function plain(o) {
+    return JSON.parse(JSON.stringify(o));
+  }
+
+  function normalize(data) {
+    const s = empty();
+    if (data && typeof data === 'object') {
+      COLLECTIONS.forEach((c) => {
+        if (Array.isArray(data[c])) s[c] = data[c].filter((x) => x && x.id && /^[A-Za-z0-9_.~:@+-]+$/.test(x.id));
+      });
+    }
+    return s;
+  }
+
+  // ---------- Google 試算表欄位對應 ----------
+
+  const METHOD_LABELS = { pourover: '手沖', immersion: '浸泡式', espresso: '義式', moka: '摩卡壺' };
+  const EXTRA = '其他資料（請勿修改）';
+
+  // [欄位, 表頭, 型別]；型別：text（預設）、num、bool、method、date、day；derived:* 為唯讀摘要欄
+  const SHEET_COLUMNS = {
+    beans: [
+      ['id', 'id'], ['name', '名稱'], ['roaster', '烘豆商'], ['origin', '產區'], ['variety', '品種'],
+      ['process', '處理法'], ['roast', '烘焙度'], ['roastDate', '烘焙日', 'day'], ['weight', '重量 g', 'num'],
+      ['price', '價格'], ['flavor', '風味標示'], ['notes', '備註'], ['archived', '已喝完', 'bool'],
+    ],
+    grinders: [
+      ['id', 'id'], ['name', '名稱'], ['unit', '刻度單位'], ['micronsPerStep', '每格 µm', 'num'],
+      ['zeroMicrons', '零點 µm', 'num'], ['precision', '刻度精度', 'num'], ['notes', '備註'],
+    ],
+    brews: [
+      ['id', 'id'], ['date', '日期', 'date'], ['method', '沖煮法', 'method'], [null, '豆子', 'derived:bean'],
+      [null, '磨豆機', 'derived:grinder'], ['grindSetting', '刻度'], ['dose', '粉量 g', 'num'],
+      ['ratio', '水粉比 1:', 'num'], ['water', '水量 g', 'num'], ['yield', '萃取量 g', 'num'],
+      ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
+      ['rating', '評分', 'num'], ['acidity', '酸', 'num'], ['sweetness', '甜', 'num'], ['bitterness', '苦', 'num'],
+      ['body', '醇厚', 'num'], ['flavorNotes', '風味描述'], ['notes', '心得'], ['nextTime', '下次調整'],
+      ['isBest', '最佳配方', 'bool'],
+    ],
+  };
+
+  function sheetColumns(collection) {
+    return SHEET_COLUMNS[collection].map(([, header, type]) => ({ header, text: type !== 'num' }))
+      .concat([{ header: EXTRA, text: true }]);
+  }
+
+  function fmtSec(sec) {
+    return Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0');
+  }
+
+  /** 記錄 → { 表頭: 值 }。對應不到欄位的資料（分段、器材細節等）放進最後的 JSON 欄 */
+  function toRow(collection, obj, state) {
+    const row = {};
+    const extra = plain(obj);
+    SHEET_COLUMNS[collection].forEach(([key, header, type]) => {
+      if (!key) {
+        if (type === 'derived:bean') {
+          const b = state.beans.find((x) => x.id === obj.beanId);
+          row[header] = b ? b.name : obj.beanName || '';
+        } else if (type === 'derived:grinder') {
+          const g = state.grinders.find((x) => x.id === obj.grinderId);
+          row[header] = g ? g.name : obj.grinderName || '';
+        } else if (type === 'derived:stages') {
+          row[header] = (obj.stages || []).map((s, i) =>
+            `${i + 1}. ${s.amount ? s.amount + 'g' : '—'}${typeof s.end === 'number' ? ' → ' + fmtSec(s.end) : ''}${s.technique ? ' ' + s.technique : ''}`).join('\n');
+        }
+        return;
+      }
+      const v = obj[key];
+      delete extra[key];
+      if (type === 'bool') row[header] = v ? '是' : '';
+      else if (type === 'method') row[header] = METHOD_LABELS[v] || v || '';
+      else if (type === 'date') row[header] = v ? String(v).replace('T', ' ') : '';
+      else row[header] = v === null || v === undefined ? '' : v;
+    });
+    delete extra.photo; // 照片另存，不放進儲存格
+    row[EXTRA] = JSON.stringify(extra);
+    return row;
+  }
+
+  /** 試算表的一列 → 記錄；使用者在試算表裡改過的欄位以試算表為準 */
+  function fromRow(collection, headers, values) {
+    const at = {};
+    headers.forEach((h, i) => { at[String(h)] = i; });
+    const cell = (h) => (at[h] === undefined ? undefined : values[at[h]]);
+    const id = String(cell('id') || '').trim();
+    if (!id) return null;
+    let obj = {};
+    try { obj = JSON.parse(cell(EXTRA) || '{}') || {}; } catch (e) { obj = {}; }
+    obj.id = id;
+    SHEET_COLUMNS[collection].forEach(([key, header, type]) => {
+      if (!key || key === 'id') return;
+      const v = cell(header);
+      if (v === undefined) return; // 欄位被刪掉：保留 JSON 裡的值
+      if (v === '' || v === null) { delete obj[key]; return; }
+      const t = String(v).trim();
+      if (type === 'num') {
+        const n = typeof v === 'number' ? v : parseFloat(t.replace(',', '.'));
+        if (Number.isFinite(n)) obj[key] = n; else delete obj[key];
+      } else if (type === 'bool') {
+        obj[key] = !['', '否', 'false', 'FALSE', '0'].includes(t);
+      } else if (type === 'method') {
+        obj[key] = Object.keys(METHOD_LABELS).find((k) => METHOD_LABELS[k] === t) || (METHOD_LABELS[t] ? t : obj.method || 'pourover');
+      } else if (type === 'date') {
+        obj[key] = t.length <= 10 ? t.slice(0, 10) + 'T00:00' : t.replace(' ', 'T').slice(0, 16);
+      } else if (type === 'day') {
+        obj[key] = t.slice(0, 10);
+      } else {
+        obj[key] = t;
+      }
+    });
+    return obj;
+  }
+
+  function parseSheets(data) {
+    const s = empty();
+    COLLECTIONS.forEach((c) => {
+      const rows = (data && data[c]) || [];
+      if (!rows.length) return;
+      const headers = rows[0];
+      s[c] = rows.slice(1).map((r) => fromRow(c, headers, r)).filter(Boolean);
+    });
+    return s;
+  }
+
+  /** 呼叫 Apps Script 伺服器端函式 */
+  function gas(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      root.google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+    });
+  }
+
+  /** 等待 claude.ai 頁面提供的 window.claude（一般網頁上不存在，直接回傳 null） */
+  async function claudeDb() {
+    if (MODE !== 'claude') return null;
+    for (let i = 0; i < 20 && !(root.claude && root.claude.use); i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (!(root.claude && root.claude.use)) return null;
+    try { return await root.claude.use('db'); } catch (e) { return null; }
+  }
+
+  const Store = {
+    state: empty(),
+    backend: 'local',
+    db: null,
+    /** 寫入失敗時呼叫，由畫面層設定 */
+    onError: (msg) => console.error(msg),
+    chains: {},
+    gas,
+
+    async init() {
+      if (MODE === 'gas' && root.google && root.google.script) {
+        try {
+          this.state = parseSheets(await gas('loadAll'));
+          this.backend = 'sheet';
+          return;
+        } catch (e) {
+          this.onError('讀取 Google 試算表失敗：' + ((e && e.message) || e));
+        }
+      }
+      const db = await claudeDb();
+      if (db) {
+        try {
+          const s = empty();
+          for (const c of COLLECTIONS) {
+            const snap = await db.collection(c).limit(1000).get();
+            s[c] = snap.docs.map((d) => plain(d.data()));
+          }
+          this.state = s;
+          this.db = db;
+          this.backend = 'db';
+          return;
+        } catch (e) {
+          this.onError('雲端資料載入失敗，暫時改用這台裝置的瀏覽器儲存。');
+        }
+      }
+      this.loadLocal();
+    },
+
+    loadLocal() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        this.state = raw ? normalize(JSON.parse(raw)) : empty();
+      } catch (e) {
+        this.state = empty();
+      }
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(() => {});
+      }
+    },
+
+    saveLocal() {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(this.state));
+      } catch (e) {
+        this.onError('儲存失敗：' + e.message + '。建議先到「設定」匯出備份。');
+      }
+    },
+
+    /** 同一份資料的寫入依序執行，避免互相覆蓋 */
+    queue(path, fn) {
+      const prev = this.chains[path] || Promise.resolve();
+      const next = prev.then(fn).catch((e) => {
+        const code = e && e.code;
+        this.onError(code === 'quota_exceeded' ? '雲端空間已滿，請刪除一些舊記錄。' : '儲存失敗：' + ((e && e.message) || code || e));
+      });
+      this.chains[path] = next;
+      return next;
+    },
+
+    persist(collection, obj) {
+      if (this.backend === 'sheet') {
+        const row = toRow(collection, obj, this.state);
+        return this.queue(collection + '/' + obj.id, () => gas('saveRecords', collection, sheetColumns(collection), [row]));
+      }
+      if (this.backend !== 'db') return this.saveLocal();
+      const data = plain(obj);
+      return this.queue(collection + '/' + obj.id, () => this.db.doc(collection + '/' + obj.id).set(data));
+    },
+
+    /** 多筆一次寫入（試算表一次呼叫；其他後端逐筆） */
+    persistMany(collection, list) {
+      if (!list.length) return Promise.resolve();
+      if (this.backend === 'sheet') {
+        const rows = list.map((o) => toRow(collection, o, this.state));
+        return this.queue(collection + '/*', () => gas('saveRecords', collection, sheetColumns(collection), rows));
+      }
+      list.forEach((o) => this.persist(collection, o));
+      return this.flush();
+    },
+
+    unpersist(collection, id) {
+      if (this.backend === 'sheet') return this.queue(collection + '/' + id, () => gas('deleteRecords', collection, [id]));
+      if (this.backend !== 'db') return this.saveLocal();
+      return this.queue(collection + '/' + id, () => this.db.doc(collection + '/' + id).delete());
+    },
+
+    /** 等待所有尚未完成的寫入 */
+    flush() {
+      return Promise.all(Object.values(this.chains));
+    },
+
+    uid,
+
+    all(collection) {
+      return this.state[collection];
+    },
+
+    get(collection, id) {
+      return this.state[collection].find((x) => x.id === id) || null;
+    },
+
+    upsert(collection, obj) {
+      const list = this.state[collection];
+      const now = new Date().toISOString();
+      if (!obj.id) {
+        obj.id = uid();
+        obj.createdAt = now;
+      }
+      obj.updatedAt = now;
+      const i = list.findIndex((x) => x.id === obj.id);
+      const renamed = i >= 0 && list[i].name !== obj.name;
+      if (i >= 0) list[i] = obj;
+      else list.push(obj);
+      this.persist(collection, obj);
+      // 試算表的記錄列會顯示豆子 / 磨豆機名稱，改名時一併更新
+      if (renamed && this.backend === 'sheet' && (collection === 'beans' || collection === 'grinders')) {
+        const key = collection === 'beans' ? 'beanId' : 'grinderId';
+        this.persistMany('brews', this.state.brews.filter((b) => b[key] === obj.id));
+      }
+      return obj;
+    },
+
+    remove(collection, id) {
+      this.state[collection] = this.state[collection].filter((x) => x.id !== id);
+      this.unpersist(collection, id);
+    },
+
+    /** 同一支豆子、同一種沖煮法只保留一個「最佳配方」 */
+    toggleBest(brewId) {
+      const brew = this.get('brews', brewId);
+      if (!brew) return;
+      const next = !brew.isBest;
+      const changed = [];
+      this.state.brews.forEach((b) => {
+        if (b.beanId === brew.beanId && b.method === brew.method && b.isBest && b !== brew) {
+          b.isBest = false;
+          changed.push(b);
+        }
+      });
+      brew.isBest = next;
+      changed.push(brew);
+      this.persistMany('brews', changed);
+    },
+
+    exportJSON() {
+      return JSON.stringify(
+        Object.assign({ exportedAt: new Date().toISOString() }, this.state),
+        null,
+        2
+      );
+    },
+
+    /** mode: 'merge'（同 id 以匯入檔為準）或 'replace'（整個取代） */
+    async importJSON(text, mode) {
+      const incoming = normalize(JSON.parse(text));
+      if (this.backend === 'sheet') {
+        // 一般網頁版備份裡的照片是 data URL，改存到試算表的照片分頁
+        for (const b of incoming.beans) {
+          if (b.photo && String(b.photo).startsWith('data:image/')) {
+            try { b.photoKey = await gas('savePhoto', b.photo); } catch (e) { /* 略過照片 */ }
+            delete b.photo;
+          }
+        }
+        if (mode === 'replace') { await gas('clearAll'); this.state = empty(); }
+      } else if (mode === 'replace') {
+        COLLECTIONS.forEach((c) => {
+          this.state[c].forEach((x) => { if (!incoming[c].some((y) => y.id === x.id)) this.unpersist(c, x.id); });
+        });
+      }
+      COLLECTIONS.forEach((c) => {
+        const map = new Map((mode === 'replace' ? [] : this.state[c]).map((x) => [x.id, x]));
+        incoming[c].forEach((x) => map.set(x.id, x));
+        this.state[c] = Array.from(map.values());
+      });
+      if (this.backend === 'sheet') {
+        for (const c of COLLECTIONS) await this.persistMany(c, incoming[c]);
+      } else if (this.backend === 'db') {
+        COLLECTIONS.forEach((c) => incoming[c].forEach((x) => this.persist(c, x)));
+      } else {
+        this.saveLocal();
+      }
+      await this.flush();
+      return COLLECTIONS.reduce((n, c) => n + incoming[c].length, 0);
+    },
+
+    async clear() {
+      if (this.backend === 'sheet') {
+        await gas('clearAll');
+      } else {
+        COLLECTIONS.forEach((c) => this.state[c].forEach((x) => this.unpersist(c, x.id)));
+      }
+      this.state = empty();
+      if (this.backend === 'local') this.saveLocal();
+      await this.flush();
+    },
+  };
+
+  // 測試用
+  Store._sheet = { toRow, fromRow, parseSheets, SHEET_COLUMNS, EXTRA };
+  root.Store = Store;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * 畫面與互動。以 hash 路由切換頁面：
+ *   #/brews  #/brew/new  #/brew/:id  #/brew/:id/edit
+ *   #/beans  #/bean/new  #/bean/:id  #/bean/:id/edit
+ *   #/timer  #/timer/:id  #/timer/free
+ *   #/tools?t=ratio|scale|grind
+ *   #/settings  #/grinder/new  #/grinder/:id/edit
+ */
+(function () {
+  'use strict';
+
+  const C = window.Calc;
+  const S = window.Store;
+  const view = document.getElementById('view');
+
+  // ---------- 設定 ----------
+
+  const METHODS = {
+    pourover: { label: '手沖', out: 'water', outLabel: '水量', ratio: 16, dose: 15, temp: 92, stages: true, template: 'three', range: 'pourover' },
+    immersion: { label: '浸泡式', out: 'water', outLabel: '水量', ratio: 15, dose: 15, temp: 94, stages: true, template: 'immersion', range: 'immersion' },
+    espresso: { label: '義式', out: 'yield', outLabel: '萃取量', ratio: 2, dose: 18, temp: 93, stages: false, range: 'espresso' },
+    moka: { label: '摩卡壺', out: 'water', outLabel: '水量', ratio: 10, dose: 15, temp: null, stages: false, range: 'moka' },
+  };
+  const METHOD_KEYS = Object.keys(METHODS);
+
+  // [欄位, 標籤, placeholder, 是否數字]
+  const EXTRA = {
+    pourover: [['dripper', '濾杯', 'V60 / Kalita / Origami'], ['filter', '濾紙', '錐形 / 波浪'], ['temp', '水溫 °C', '92', true]],
+    immersion: [['dripper', '器具', '法壓 / 聰明濾杯 / 愛樂壓'], ['filter', '濾材', '濾紙 / 金屬濾網'], ['temp', '水溫 °C', '94', true]],
+    espresso: [['machine', '咖啡機', ''], ['basket', '粉碗', '18g 精準粉碗'], ['temp', '水溫 °C', '93', true], ['preinfusion', '預浸泡 秒', '5', true], ['pressure', '壓力 bar', '9', true]],
+    moka: [['dripper', '摩卡壺', 'Bialetti 3 杯份'], ['waterStart', '注入的水', '熱水 / 冷水'], ['heat', '火力', '中小火'], ['flowStart', '開始流出', '2:30']],
+  };
+
+  const RECIPE_FIELDS = ['method', 'grinderId', 'grinderName', 'grindSetting', 'dose', 'ratio', 'water', 'yield', 'temp', 'dripper', 'filter',
+    'machine', 'basket', 'preinfusion', 'pressure', 'waterStart', 'heat', 'flowStart', 'totalTime'];
+  const NUM_FIELDS = new Set(['dose', 'ratio', 'water', 'yield', 'temp', 'preinfusion', 'pressure']);
+  const TASTE = [['acidity', '酸'], ['sweetness', '甜'], ['bitterness', '苦'], ['body', '醇厚']];
+  const TASTE_KEYS = new Set(TASTE.map((t) => t[0]));
+  const ROASTS = ['極淺焙', '淺焙', '中淺焙', '中焙', '中深焙', '深焙'];
+  const PROCESSES = ['水洗', '日曬', '蜜處理', '厭氧發酵', '濕剝', '二氧化碳浸漬'];
+  const TECHNIQUES = ['繞圈', '中心注水', '螺旋往外', '細水柱', '大水柱沖擊', '攪拌', '搖晃濾杯', '靜置'];
+  const RATIO_PRESETS = [['手沖 1:15', 15], ['手沖 1:16', 16], ['手沖 1:17', 17], ['義式 1:2', 2], ['摩卡壺 1:10', 10], ['冷萃 1:8', 8]];
+
+  // 嵌在 claude.ai 頁面時不能改網址，改用內部路由
+  // 執行環境：claude（claude.ai 頁面）、gas（Google 試算表的 Apps Script）、web（一般網頁）
+  const MODE = window.COFFEE_MODE || 'web';
+  const EMBED = MODE !== 'web'; // 內嵌在別的頁面裡，不能改網址，用內部路由
+  const CLAUDE = MODE === 'claude';
+  const SHEET = MODE === 'gas';
+  let currentHash = (!EMBED && location.hash) || '#/brews';
+
+  let cleanup = null; // 離開頁面時要執行的收尾（計時器）
+  let pending = null; // 從計時器 / 工具帶到「新增記錄」的草稿
+
+  // ---------- 小工具 ----------
+
+  const $ = (sel, el) => (el || document).querySelector(sel);
+  const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+
+  function esc(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function nowLocal() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  function dateOffset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  }
+
+  function fmtDate(s) {
+    if (!s) return '';
+    const sameYear = s.slice(0, 4) === String(new Date().getFullYear());
+    return (sameYear ? '' : s.slice(0, 4) + '/') + s.slice(5, 7) + '/' + s.slice(8, 10) + (s.length > 10 ? ' ' + s.slice(11, 16) : '');
+  }
+
+  const byDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date || ''));
+
+  function stars(n) {
+    if (!n) return '<span class="muted">未評分</span>';
+    return '<span class="stars">' + '★'.repeat(n) + '<span class="off">' + '★'.repeat(5 - n) + '</span></span>';
+  }
+
+  function mount(html) {
+    view.innerHTML = html;
+    hydratePhotos(view);
+    return view.firstElementChild;
+  }
+
+  function header(title, opts) {
+    opts = opts || {};
+    return `<header class="top">
+      ${opts.back ? `<a class="back" href="${opts.back}" aria-label="返回">‹</a>` : ''}
+      <h1>${esc(title)}</h1>
+      ${opts.action || ''}
+    </header>`;
+  }
+
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add('show'), 10);
+    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2200);
+  }
+
+  function notFound() {
+    mount(`<div class="page">${header('找不到', { back: '#/brews' })}<p class="empty">這筆資料不存在或已被刪除。</p></div>`);
+  }
+
+  function field(label, input, cls) {
+    return `<label class="field ${cls || ''}"><span>${label}</span>${input}</label>`;
+  }
+
+  function numInput(f, value, extra) {
+    return `<input type="number" step="any" inputmode="decimal" data-f="${f}" value="${esc(value)}" ${extra || ''}>`;
+  }
+
+  function go(h, replace) {
+    if (EMBED) { currentHash = h; route(); return; }
+    if (location.hash === h) route();
+    else if (replace) location.replace(h);
+    else location.hash = h;
+  }
+
+  /** 頁面內的確認視窗（claude.ai 頁面不允許瀏覽器原生 confirm） */
+  function ask(message, okLabel, danger) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'modal';
+      wrap.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true">
+        <p>${esc(message)}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-v="0">取消</button>
+          <button type="button" class="btn ${danger ? 'danger-fill' : 'primary'}" data-v="1">${esc(okLabel || '確定')}</button>
+        </div></div>`;
+      const done = (v) => { wrap.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') done(false); };
+      wrap.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-v]');
+        if (b) done(b.dataset.v === '1');
+        else if (e.target === wrap) done(false);
+      });
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(wrap);
+      wrap.querySelector('[data-v="1"]').focus();
+    });
+  }
+
+  /** 顯示一段可複製的文字（下載不可用時的備案） */
+  function showText(title, text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal';
+    wrap.innerHTML = `<div class="modal-box">
+      <p><b>${esc(title)}</b></p>
+      <textarea id="copy-text" rows="10" readonly></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-v="close">關閉</button>
+        <button type="button" class="btn primary" data-v="copy">複製</button>
+      </div></div>`;
+    $('#copy-text', wrap).value = text;
+    wrap.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-v]');
+      if (!b && e.target !== wrap) return;
+      if (b && b.dataset.v === 'copy') {
+        const ta = $('#copy-text', wrap);
+        const fallback = () => { ta.focus(); ta.select(); toast('已選取，請手動複製'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('已複製'), fallback);
+        else fallback();
+        return;
+      }
+      wrap.remove();
+    });
+    document.body.appendChild(wrap);
+  }
+
+  // ---------- 資料輔助 ----------
+
+  function unitOf(g) {
+    return g && g.unit !== undefined && g.unit !== null ? g.unit : '格';
+  }
+
+  /** 記錄上的豆子名稱：常用豆子，或沒加入常用時直接輸入的名稱 */
+  function brewBeanName(b) {
+    const bean = S.get('beans', b.beanId);
+    return bean ? bean.name : b.beanName || '未指定豆子';
+  }
+
+  function grindText(b) {
+    const g = S.get('grinders', b.grinderId);
+    const name = g ? g.name : b.grinderName || '';
+    if (!name && !b.grindSetting) return '';
+    return [name, b.grindSetting ? b.grindSetting + ' ' + unitOf(g) : ''].filter(Boolean).join(' ').trim();
+  }
+
+  function findByName(collection, name) {
+    const n = String(name || '').trim().toLowerCase();
+    return n ? S.all(collection).find((x) => String(x.name || '').trim().toLowerCase() === n) || null : null;
+  }
+
+  function presetByName(name) {
+    const n = String(name || '').trim().toLowerCase();
+    return C.GRINDER_PRESETS.find((p) => p.name.toLowerCase() === n) || null;
+  }
+
+  function hasPhoto(bean) {
+    return !!(bean && (bean.photoId || bean.photoKey || bean.photo));
+  }
+
+  /** 豆子照片的 <img>；存在試算表的照片先放空殼，之後由 hydratePhotos 載入 */
+  function photoImg(bean, cls, alt) {
+    if (!hasPhoto(bean)) return '';
+    if (bean.photoKey) return `<img class="${cls}" data-sheet-photo="${esc(bean.photoKey)}" alt="${esc(alt)}">`;
+    const src = bean.photoId ? '/_blob/' + bean.photoId : bean.photo;
+    return `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`;
+  }
+
+  const photoCache = {};
+  function hydratePhotos(scope) {
+    if (!SHEET) return;
+    $$('img[data-sheet-photo]:not([src])', scope).forEach((img) => {
+      const key = img.dataset.sheetPhoto;
+      const p = photoCache[key] || (photoCache[key] = S.gas('getPhoto', key).catch(() => ''));
+      p.then((src) => { if (src) img.src = src; else img.remove(); });
+    });
+  }
+
+  function summary(b) {
+    const m = METHODS[b.method] || METHODS.pourover;
+    const out = b[m.out];
+    return [
+      b.dose ? b.dose + 'g' : '',
+      b.ratio ? '1:' + b.ratio : '',
+      out ? (m.out === 'yield' ? '出 ' : '') + out + 'g' : '',
+      grindText(b),
+      b.totalTime || '',
+    ].filter(Boolean).join(' · ');
+  }
+
+  function beanBrews(beanId) {
+    return S.all('brews').filter((b) => b.beanId === beanId).sort(byDateDesc);
+  }
+
+  /** 明確標記的最佳配方優先，否則取評分最高（同分取最新） */
+  function bestBrew(beanId, method, excludeId) {
+    const list = beanBrews(beanId).filter((b) => (!method || b.method === method) && b.id !== excludeId);
+    return list.find((b) => b.isBest) || list.filter((b) => b.rating).sort((a, b) => b.rating - a.rating)[0] || null;
+  }
+
+  function remaining(bean) {
+    const w = C.num(bean.weight);
+    if (w === null) return null;
+    const used = beanBrews(bean.id).reduce((s, b) => s + (C.num(b.dose) || 0), 0);
+    return Math.max(0, C.round(w - used, 0.1));
+  }
+
+  function methodTag(m) {
+    return `<span class="tag m-${esc(m)}">${esc((METHODS[m] || METHODS.pourover).label)}</span>`;
+  }
+
+  function brewCard(b, opts) {
+    opts = opts || {};
+    return `<a class="card brew-card" href="#/brew/${b.id}">
+      <div class="row">${methodTag(b.method)}<strong class="grow">${esc(opts.hideBean ? fmtDate(b.date) : brewBeanName(b))}</strong>${b.isBest ? '<span class="best">★ 最佳</span>' : ''}</div>
+      <div class="meta">${esc(summary(b)) || '<span class="muted">沒有參數</span>'}</div>
+      <div class="row">${stars(b.rating)}<span class="muted small">${opts.hideBean ? '' : esc(fmtDate(b.date))}</span></div>
+    </a>`;
+  }
+
+  function stagesTable(stages) {
+    if (!stages || !stages.length) return '';
+    const cum = C.cumulative(stages);
+    return `<table class="table stages-table">
+      <thead><tr><th>段</th><th class="r">注水</th><th class="r">累計</th><th class="r">結束</th></tr></thead>
+      <tbody>${stages.map((s, i) => `<tr>
+        <td>${esc(s.label || `第 ${i + 1} 段`)}${s.technique ? `<div class="muted small">${esc(s.technique)}</div>` : ''}</td>
+        <td class="r mono">${s.amount ? esc(s.amount) + 'g' : '—'}</td>
+        <td class="r mono">${cum[i]}g</td>
+        <td class="r mono">${C.stageEnd(s) !== null ? C.formatTime(C.stageEnd(s)) : '—'}</td></tr>`).join('')}</tbody></table>`;
+  }
+
+  // ---------- 路由 ----------
+
+  function route() {
+    if (cleanup) { cleanup(); cleanup = null; }
+    if (!EMBED) currentHash = location.hash || '#/brews';
+    const h = currentHash.slice(1) || '/brews';
+    const [path, qs] = h.split('?');
+    const [a, b, c] = path.split('/').filter(Boolean);
+    const q = new URLSearchParams(qs || '');
+    let tab = a;
+
+    if (a === 'brews') renderBrewList(q);
+    else if (a === 'brew') {
+      tab = 'brews';
+      if (b === 'new') renderBrewForm(null, q);
+      else if (c === 'edit') renderBrewForm(b, q);
+      else renderBrewDetail(b);
+    } else if (a === 'beans') renderBeanList(q);
+    else if (a === 'bean') {
+      tab = 'beans';
+      if (b === 'new') renderBeanForm(null);
+      else if (c === 'edit') renderBeanForm(b);
+      else renderBeanDetail(b);
+    } else if (a === 'timer') renderTimer(b);
+    else if (a === 'tools') renderTools(q);
+    else if (a === 'settings') renderSettings();
+    else if (a === 'grinder') { tab = 'settings'; renderGrinderForm(b === 'new' ? null : b); }
+    else { go('#/brews', true); return; }
+
+    $$('.tabbar a').forEach((el) => el.classList.toggle('active', el.dataset.tab === tab));
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- 沖煮記錄列表 ----------
+
+  function renderBrewList(q) {
+    const method = q.get('m') || '';
+    const beanId = q.get('bean') || '';
+    const link = (m, bn) => '#/brews?' + new URLSearchParams(Object.entries({ m, bean: bn }).filter((e) => e[1])).toString();
+    let brews = S.all('brews').slice().sort(byDateDesc);
+    if (method) brews = brews.filter((b) => b.method === method);
+    if (beanId) brews = brews.filter((b) => b.beanId === beanId);
+    const beans = S.all('beans').slice().sort((x, y) => x.name.localeCompare(y.name, 'zh-Hant'));
+
+    const page = mount(`<div class="page">
+      ${header('沖煮記錄', { action: `<a class="btn primary small" href="#/brew/new${method ? '?m=' + method : ''}">＋ 新增</a>` })}
+      <div class="chips scroll">
+        <a class="chip ${!method ? 'on' : ''}" href="${link('', beanId)}">全部</a>
+        ${METHOD_KEYS.map((k) => `<a class="chip ${method === k ? 'on' : ''}" href="${link(k, beanId)}">${METHODS[k].label}</a>`).join('')}
+      </div>
+      ${beans.length ? `<select class="filter" id="bean-filter">
+        <option value="">所有豆子</option>
+        ${beans.map((b) => `<option value="${b.id}" ${b.id === beanId ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}
+      </select>` : ''}
+      <div class="list">${brews.length ? brews.map((b) => brewCard(b)).join('') : emptyBrews()}</div>
+    </div>`);
+
+    const sel = $('#bean-filter', page);
+    if (sel) sel.addEventListener('change', () => { go(link(method, sel.value)); });
+  }
+
+  function emptyBrews() {
+    const fresh = !S.all('brews').length && !S.all('beans').length;
+    return `<div class="empty">
+      <p>${fresh ? '還沒有任何記錄。' : '沒有符合條件的記錄。'}</p>
+      ${fresh ? `<p>建議順序：先到「設定」加入你的磨豆機 → 「豆子」新增一支豆子 → 回來新增第一筆沖煮。</p>
+        <p><a class="btn" href="#/settings">前往設定</a> <a class="btn primary" href="#/brew/new">新增記錄</a></p>` : ''}
+    </div>`;
+  }
+
+  // ---------- 沖煮記錄詳細 ----------
+
+  function renderBrewDetail(id) {
+    const b = S.get('brews', id);
+    if (!b) return notFound();
+    const m = METHODS[b.method] || METHODS.pourover;
+    const bean = S.get('beans', b.beanId);
+    const g = S.get('grinders', b.grinderId);
+    const mic = C.grinderMicrons(g, b.grindSetting);
+    const rd = bean ? C.restDays(bean.roastDate, b.date) : null;
+
+    const stats = [
+      ['粉量', b.dose ? b.dose + ' g' : ''],
+      ['水粉比', b.ratio ? '1:' + b.ratio : ''],
+      [m.outLabel, b[m.out] ? b[m.out] + ' g' : ''],
+      ['總時間', b.totalTime],
+      ['研磨', grindText(b) + (mic !== null ? `（≈${mic}µm）` : '')],
+    ].concat((EXTRA[b.method] || []).map(([f, label]) => [label, b[f]]))
+      .concat([['養豆天數', rd !== null ? rd + ' 天' : '']])
+      .filter((s) => s[1] !== '' && s[1] !== null && s[1] !== undefined);
+
+    const tasteBars = TASTE.filter(([k]) => b[k]).map(([k, l]) =>
+      `<div class="bar"><span>${l}</span><div class="track"><div style="width:${b[k] * 20}%"></div></div><b>${b[k]}</b></div>`).join('');
+
+    const page = mount(`<div class="page">
+      ${header(brewBeanName(b), { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
+      <div class="row sub">${methodTag(b.method)}<span class="muted">${esc(fmtDate(b.date))}</span>${b.isBest ? '<span class="best">★ 最佳配方</span>' : ''}</div>
+      <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></section>
+      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}</section>` : ''}
+      <section class="card"><h2>風味</h2>
+        <div class="big-stars">${stars(b.rating)}</div>
+        ${tasteBars ? `<div class="bars">${tasteBars}</div>` : ''}
+        ${b.flavorNotes ? `<p><b>風味：</b>${esc(b.flavorNotes)}</p>` : ''}
+        ${b.notes ? `<p><b>心得：</b>${esc(b.notes)}</p>` : ''}
+        ${b.nextTime ? `<p class="note"><b>下次調整：</b>${esc(b.nextTime)}</p>` : ''}
+      </section>
+      <div class="actions">
+        <a class="btn primary" href="#/timer/${id}">⏱ 跟著計時沖</a>
+        <a class="btn" href="#/brew/new?from=${id}">再沖一次</a>
+        <button class="btn" data-act="best">${b.isBest ? '取消最佳配方' : '★ 設為最佳配方'}</button>
+        ${bean ? `<a class="btn ghost" href="#/bean/${bean.id}">看這支豆子</a>` : ''}
+        <button class="btn danger ghost" data-act="del">刪除</button>
+      </div>
+    </div>`);
+
+    page.addEventListener('click', async (e) => {
+      const act = e.target.closest('[data-act]');
+      if (!act) return;
+      if (act.dataset.act === 'best') {
+        S.toggleBest(id);
+        toast(S.get('brews', id).isBest ? `已設為這支豆子的${m.label}最佳配方` : '已取消最佳配方');
+        renderBrewDetail(id);
+      } else if (act.dataset.act === 'del' && await ask('確定刪除這筆記錄？', '刪除', true)) {
+        S.remove('brews', id);
+        go('#/brews');
+      }
+    });
+  }
+
+  // ---------- 新增 / 編輯沖煮記錄 ----------
+
+  const blankStage = () => ({ amount: null, end: null });
+
+  function methodDefaults(method, dose) {
+    const m = METHODS[method];
+    const d = { method, dose: dose || m.dose, ratio: m.ratio };
+    d[m.out] = C.waterFromDose(d.dose, d.ratio);
+    if (m.temp) d.temp = m.temp;
+    d.stages = m.stages ? [blankStage()] : [];
+    return d;
+  }
+
+  function newDraft(q) {
+    const brews = S.all('brews').slice().sort(byDateDesc);
+    const last = brews[0];
+    const from = q.get('from') && S.get('brews', q.get('from'));
+    let d;
+    if (q.get('pending') && pending) {
+      d = Object.assign(methodDefaults(pending.method || 'pourover'), pending);
+      pending = null;
+    } else if (from) {
+      d = { beanId: from.beanId, beanName: from.beanName, stages: clone(from.stages || []) };
+      RECIPE_FIELDS.forEach((f) => { if (from[f] !== undefined) d[f] = from[f]; });
+    } else {
+      const method = METHODS[q.get('m')] ? q.get('m') : (last && last.method) || 'pourover';
+      d = methodDefaults(method);
+      d.beanId = q.get('bean') || '';
+      d.grinderId = (last && last.grinderId) || (S.all('grinders')[0] || {}).id || '';
+      // 同一支豆子、同沖煮法有最佳配方時直接帶入
+      const best = d.beanId && bestBrew(d.beanId, method);
+      if (best) {
+        RECIPE_FIELDS.forEach((f) => { if (best[f] !== undefined) d[f] = best[f]; });
+        d.stages = clone(best.stages || []);
+      }
+    }
+    if (q.get('time')) d.totalTime = C.formatTime(+q.get('time'));
+    d.date = nowLocal();
+    return d;
+  }
+
+  function renderBrewForm(id, q) {
+    const editing = id ? S.get('brews', id) : null;
+    if (id && !editing) return notFound();
+    const d = editing ? clone(editing) : newDraft(q);
+    d.stages = C.migrateStages(d.stages || [], d.totalTime);
+    let autoScale = true;
+    let addBean = true; // 輸入新的豆子名稱時，儲存時加入常用
+    let addGrinder = true;
+    let grindNote = '';
+    let page;
+
+    function draw() {
+      page = mount(formHtml());
+      bind();
+      if (METHODS[d.method].stages) renderStages();
+      updateBeanHint();
+      updateGrindHint();
+      updateRatioHint();
+    }
+
+    function formHtml() {
+      const m = METHODS[d.method];
+      const bean = S.get('beans', d.beanId);
+      const grinder = S.get('grinders', d.grinderId);
+      const beans = S.all('beans').filter((b) => !b.archived || b.id === d.beanId)
+        .sort((x, y) => x.name.localeCompare(y.name, 'zh-Hant'));
+      const grinderNames = S.all('grinders').map((g) => g.name)
+        .concat(C.GRINDER_PRESETS.map((p) => p.name).filter((n) => !findByName('grinders', n)));
+      const extras = (EXTRA[d.method] || []).map(([f, label, ph, isNum]) =>
+        field(label, isNum ? numInput(f, d[f], `placeholder="${ph}"`) : `<input data-f="${f}" value="${esc(d[f])}" placeholder="${esc(ph)}">`)).join('');
+
+      return `<div class="page">
+        ${header(editing ? '編輯記錄' : '新增記錄', { back: editing ? '#/brew/' + editing.id : '#/brews' })}
+        <form id="brew-form" autocomplete="off">
+          <section class="card">
+            <div class="seg">${METHOD_KEYS.map((k) => `<label><input type="radio" name="method" value="${k}" data-f="method" ${d.method === k ? 'checked' : ''}><span>${METHODS[k].label}</span></label>`).join('')}</div>
+            <div>
+              ${field('日期時間', `<input type="datetime-local" data-f="date" value="${esc(d.date)}">`)}
+              ${field('豆子', `<input data-f="beanText" list="bean-list" value="${esc(bean ? bean.name : d.beanName)}" placeholder="輸入或選擇豆子">`)}
+            </div>
+            <div id="bean-hint" class="hint"></div>
+          </section>
+
+          <section class="card"><h2>研磨</h2>
+            <div class="grid2">
+              ${field('磨豆機', `<input data-f="grinderText" list="grinder-list" value="${esc(grinder ? grinder.name : d.grinderName)}" placeholder="輸入或選擇">`)}
+              ${field('刻度', `<input data-f="grindSetting" inputmode="decimal" value="${esc(d.grindSetting)}" placeholder="例：24">`)}
+            </div>
+            <div id="grind-hint" class="hint"></div>
+          </section>
+
+          <section class="card"><h2>比例與參數</h2>
+            <div class="grid3">
+              ${field('粉量 g', numInput('dose', d.dose))}
+              ${field('水粉比 1:', numInput('ratio', d.ratio))}
+              ${field(m.outLabel + ' g', numInput(m.out, d[m.out]))}
+            </div>
+            <div id="ratio-hint" class="hint"></div>
+            <div class="grid2">
+              ${extras}
+              ${field(d.method === 'espresso' ? '萃取時間' : '總時間', `<input data-f="totalTime" value="${esc(d.totalTime)}" placeholder="${d.method === 'espresso' ? '0:28' : '2:45'}" inputmode="numeric">`)}
+            </div>
+          </section>
+
+          ${m.stages ? `<section class="card">
+            <div class="card-head"><h2>分段注水</h2>
+              <label class="check"><input type="checkbox" id="auto-scale" ${autoScale ? 'checked' : ''}> 隨水量等比例調整</label></div>
+            <p class="muted small stage-help">每段填注水克數，和這段<b>結束</b>的秒數（例：30 或 1:30）。</p>
+            <div id="stages"></div>
+            <button type="button" class="btn ghost block" data-act="add-stage">＋ 手動新增</button>
+            <div id="stage-sum" class="hint"></div>
+            <details class="tpl"><summary>套用範本</summary>
+              <div class="chips">${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
+            </details>
+          </section>` : ''}
+
+          <section class="card"><h2>風味</h2>
+            <div class="star-input">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star ${n <= (d.rating || 0) ? 'on' : ''}" data-act="rate" data-n="${n}" aria-label="${n} 星">★</button>`).join('')}</div>
+            ${TASTE.map(([k, l]) => `<label class="slider"><span>${l}</span><input type="range" min="0" max="5" step="1" data-f="${k}" value="${d[k] || 0}"><output id="o-${k}">${d[k] || '—'}</output></label>`).join('')}
+            ${field('風味描述', `<input data-f="flavorNotes" value="${esc(d.flavorNotes)}" placeholder="柑橘、花香、焦糖…">`)}
+            ${field('心得', `<textarea data-f="notes" rows="2" placeholder="這杯喝起來如何？">${esc(d.notes)}</textarea>`)}
+            ${field('下次調整', `<textarea data-f="nextTime" rows="2" placeholder="例：磨細 2 格、水溫降到 90°C">${esc(d.nextTime)}</textarea>`)}
+          </section>
+
+          <div class="form-actions">
+            <a class="btn ghost" href="${editing ? '#/brew/' + editing.id : '#/brews'}">取消</a>
+            <button class="btn primary" type="submit">儲存</button>
+          </div>
+        </form>
+        <datalist id="bean-list">${beans.map((b) => `<option value="${esc(b.name)}">`).join('')}</datalist>
+        <datalist id="grinder-list">${grinderNames.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
+        <datalist id="tech-list">${TECHNIQUES.map((t) => `<option value="${t}">`).join('')}</datalist>
+      </div>`;
+    }
+
+    function stageRow(s, i) {
+      const detail = !!(s.label || s.technique);
+      const prevEnd = i > 0 ? C.stageEnd(d.stages[i - 1]) : null;
+      return `<div class="stage" data-i="${i}">
+        <div class="stage-line">
+          <span class="stage-no">${i + 1}</span>
+          <label class="mini"><input type="number" step="any" inputmode="decimal" data-sf="amount" value="${esc(s.amount)}" placeholder="注水" aria-label="第 ${i + 1} 段注水克數"><span>g</span></label>
+          <label class="mini"><input data-sf="end" inputmode="numeric" value="${esc(s.end)}" placeholder="${prevEnd !== null ? prevEnd + 30 : 30}" aria-label="第 ${i + 1} 段結束秒數"><span>秒</span></label>
+          <button type="button" class="icon-btn" data-act="more-stage" aria-expanded="${detail}" aria-label="詳細方式（選填）" title="詳細方式（選填）">⋯</button>
+          <button type="button" class="icon-btn" data-act="del-stage" aria-label="刪除這段">✕</button>
+        </div>
+        <div class="stage-sub muted small"></div>
+        <div class="stage-more" ${detail ? '' : 'hidden'}>
+          <input data-sf="label" value="${esc(s.label)}" placeholder="段落名稱（選填，例：悶蒸）">
+          <input data-sf="technique" list="tech-list" value="${esc(s.technique)}" placeholder="手法（選填）：繞圈 / 中心注水…">
+        </div>
+      </div>`;
+    }
+
+    function renderStages() {
+      $('#stages', page).innerHTML = d.stages.map(stageRow).join('');
+      updateStageSum();
+    }
+
+    function updateStageSum() {
+      const el = $('#stage-sum', page);
+      if (!el) return;
+      const cum = C.cumulative(d.stages);
+      $$('.stage', page).forEach((row, i) => {
+        const end = C.stageEnd(d.stages[i]);
+        $('.stage-sub', row).textContent = `累計 ${cum[i]} g` + (end !== null ? ` · ${C.formatTime(end)} 結束` : '');
+      });
+      const sum = C.stagesTotal(d.stages);
+      const water = C.num(d.water);
+      const off = water !== null && sum > 0 && Math.abs(sum - water) > 0.5;
+      el.className = 'hint' + (off ? ' warn' : '');
+      el.innerHTML = sum > 0 ? `分段合計 <b>${sum}</b> g${water !== null ? ` / 總水量 ${water} g` : ''}${off ? '（不一致）' : ''}` : '';
+    }
+
+    function setVal(f, v) {
+      const el = page.querySelector(`[data-f="${f}"]`);
+      if (el && el !== document.activeElement) el.value = v === null || v === undefined ? '' : v;
+    }
+
+    function updateBeanHint() {
+      const el = $('#bean-hint', page);
+      const bean = S.get('beans', d.beanId);
+      if (!bean) {
+        el.innerHTML = d.beanName
+          ? `<label class="check"><input type="checkbox" id="add-bean" ${addBean ? 'checked' : ''}> 「${esc(d.beanName)}」加入常用豆子</label>`
+          : '';
+        return;
+      }
+      const parts = [];
+      const rd = C.restDays(bean.roastDate, d.date);
+      if (rd !== null) parts.push(`養豆第 <b>${rd}</b> 天`);
+      const rem = remaining(bean);
+      if (rem !== null) parts.push(`剩餘約 <b>${rem}</b> g`);
+      let html = parts.length ? `<div>${parts.join(' · ')}</div>` : '';
+      const prev = beanBrews(bean.id).filter((b) => b.id !== d.id && b.nextTime)[0];
+      if (prev) html += `<div class="note">上次（${esc(fmtDate(prev.date))}）想調整：${esc(prev.nextTime)}</div>`;
+      const best = bestBrew(bean.id, d.method, d.id);
+      if (best) html += `<button type="button" class="btn small" data-act="apply-best" data-id="${best.id}">套用${best.isBest ? '最佳' : '評分最高'}配方：${esc(summary(best))}</button>`;
+      el.innerHTML = html;
+    }
+
+    function updateGrindHint() {
+      const el = $('#grind-hint', page);
+      const g = S.get('grinders', d.grinderId);
+      if (!g) {
+        if (d.grinderName) {
+          const p = presetByName(d.grinderName);
+          el.innerHTML = `<label class="check"><input type="checkbox" id="add-grinder" ${addGrinder ? 'checked' : ''}> 「${esc(d.grinderName)}」加入常用磨豆機${p ? `（帶入每格約 ${p.micronsPerStep} µm，可換算刻度）` : ''}</label>`;
+        } else {
+          el.innerHTML = S.all('grinders').length ? '' : '輸入磨豆機名稱，儲存時會加入常用；之後換磨豆機能自動換算刻度。';
+        }
+        return;
+      }
+      if (!C.canConvert(g)) {
+        el.innerHTML = `這台磨豆機還沒設定「每格微米」，<a href="#/grinder/${g.id}/edit">設定後</a>即可換算刻度。`;
+        return;
+      }
+      let html = grindNote ? `<div>${esc(grindNote)}</div>` : '';
+      const mic = C.grinderMicrons(g, d.grindSetting);
+      if (mic !== null) {
+        const ms = C.methodsForMicrons(mic).map((r) => r.label);
+        html += `<div>≈ <b>${mic}</b> µm${ms.length ? ' · 落在：' + ms.join('、') + ' 範圍' : ''}</div>`;
+      }
+      const r = C.grinderRangeTable(g).find((x) => x.key === METHODS[d.method].range);
+      if (r) html += `<div class="muted">${METHODS[d.method].label}參考範圍：${r.from}–${r.to} ${esc(unitOf(g))}</div>`;
+      el.innerHTML = html;
+    }
+
+    function updateRatioHint() {
+      const el = $('#ratio-hint', page);
+      if (d.method === 'espresso') {
+        el.innerHTML = '常見比例：Ristretto 1:1–1.5 · 標準 1:2 · Lungo 1:3';
+      } else if (d.method === 'moka') {
+        el.innerHTML = '摩卡壺粉槽裝滿抹平（不壓實），水加到洩壓閥下方；常見約 1:7–1:10。';
+      } else {
+        const bev = C.estimatedBeverage(d.water, d.dose);
+        el.innerHTML = bev !== null ? `預估萃取液約 <b>${bev}</b> g（咖啡粉約吸 2 倍水）` : '';
+      }
+    }
+
+    function onOutChanged() {
+      if (!METHODS[d.method].stages || !autoScale) return;
+      if (C.stagesTotal(d.stages) > 0 && C.num(d.water)) {
+        d.stages = C.scaleStages(d.stages, d.water);
+        renderStages();
+      }
+    }
+
+    function applyRecipe(src) {
+      RECIPE_FIELDS.forEach((f) => { if (src[f] !== undefined) d[f] = src[f]; });
+      d.stages = C.migrateStages(clone(src.stages || []), src.totalTime);
+    }
+
+    function onInput(e) {
+      const t = e.target;
+      const isText = t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['checkbox', 'radio'].includes(t.type));
+      if ((e.type === 'change') === isText) return; // 文字類用 input 事件、選單與勾選用 change 事件
+
+      if (t.id === 'auto-scale') { autoScale = t.checked; return; }
+      if (t.id === 'add-bean') { addBean = t.checked; return; }
+      if (t.id === 'add-grinder') { addGrinder = t.checked; return; }
+
+      if (t.dataset.sf) {
+        const s = d.stages[+t.closest('.stage').dataset.i];
+        const k = t.dataset.sf;
+        s[k] = k === 'amount' ? C.num(t.value) : k === 'end' ? C.parseTime(t.value) : t.value;
+        updateStageSum();
+        return;
+      }
+
+      const f = t.dataset.f;
+      if (!f) return;
+      const out = METHODS[d.method].out;
+
+      if (f === 'method') {
+        const keep = { beanId: d.beanId, beanName: d.beanName, grinderId: d.grinderId, grinderName: d.grinderName, grindSetting: d.grindSetting };
+        Object.assign(d, methodDefaults(t.value), keep);
+        const best = d.beanId && bestBrew(d.beanId, d.method, d.id);
+        if (best) applyRecipe(best);
+        draw();
+        return;
+      }
+
+      if (f === 'beanText') {
+        const match = findByName('beans', t.value);
+        d.beanId = match ? match.id : '';
+        d.beanName = match ? '' : t.value.trim();
+        updateBeanHint();
+        return;
+      }
+
+      if (f === 'grinderText') {
+        const prev = S.get('grinders', d.grinderId);
+        const next = findByName('grinders', t.value);
+        d.grinderId = next ? next.id : '';
+        d.grinderName = next ? '' : t.value.trim();
+        grindNote = '';
+        if (prev && next && prev !== next && d.grindSetting) {
+          const conv = C.convertGrind(prev, d.grindSetting, next);
+          if (conv !== null) {
+            grindNote = `已由 ${prev.name} ${d.grindSetting} ${unitOf(prev)} 自動換算`;
+            d.grindSetting = String(conv);
+            setVal('grindSetting', conv);
+          }
+        }
+        updateGrindHint();
+        return;
+      }
+
+      if (TASTE_KEYS.has(f)) {
+        d[f] = C.num(t.value) || null;
+        $('#o-' + f, page).textContent = d[f] || '—';
+        return;
+      }
+
+      d[f] = NUM_FIELDS.has(f) ? C.num(t.value) : t.value;
+
+      if (f === 'date') updateBeanHint();
+      if (f === 'grindSetting') { grindNote = ''; updateGrindHint(); }
+      if (f === 'dose' || f === 'ratio') {
+        const v = C.waterFromDose(d.dose, d.ratio);
+        if (v !== null) { d[out] = v; setVal(out, v); onOutChanged(); }
+      } else if (f === out) {
+        const r = C.ratioOf(d.dose, d[out]);
+        if (r !== null) { d.ratio = r; setVal('ratio', r); }
+        onOutChanged();
+      }
+      updateRatioHint();
+      updateStageSum();
+    }
+
+    async function onClick(e) {
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'tpl') {
+        const t = C.POUR_TEMPLATES[b.dataset.k];
+        const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
+        if (filled && !await ask(`以「${t.label}」取代目前的分段？`, '取代')) return;
+        const built = C.buildTemplate(b.dataset.k, d.dose, d.water);
+        if (!built.length) return toast('請先填粉量與水量');
+        d.stages = built;
+        renderStages();
+      } else if (act === 'add-stage') {
+        d.stages.push(blankStage());
+        renderStages();
+        const rows = $$('.stage', page);
+        $('[data-sf="amount"]', rows[rows.length - 1]).focus();
+      } else if (act === 'more-stage') {
+        const more = $('.stage-more', b.closest('.stage'));
+        more.hidden = !more.hidden;
+        b.setAttribute('aria-expanded', String(!more.hidden));
+        if (!more.hidden) $('input', more).focus();
+      } else if (act === 'del-stage') {
+        d.stages.splice(+b.closest('.stage').dataset.i, 1);
+        renderStages();
+      } else if (act === 'rate') {
+        const n = +b.dataset.n;
+        d.rating = d.rating === n ? null : n;
+        $$('.star', page).forEach((s) => s.classList.toggle('on', +s.dataset.n <= (d.rating || 0)));
+      } else if (act === 'apply-best') {
+        applyRecipe(S.get('brews', b.dataset.id));
+        draw();
+        toast('已套用配方');
+      }
+    }
+
+    function onSubmit(e) {
+      e.preventDefault();
+      const rec = clone(d);
+      // 新輸入的豆子 / 磨豆機：勾選「加入常用」就建立
+      if (!rec.beanId && rec.beanName && addBean) rec.beanId = S.upsert('beans', { name: rec.beanName }).id;
+      if (rec.beanId || !rec.beanName) delete rec.beanName;
+      if (!rec.grinderId && rec.grinderName && addGrinder) {
+        const p = presetByName(rec.grinderName);
+        rec.grinderId = S.upsert('grinders', p
+          ? { name: p.name, unit: '格', micronsPerStep: p.micronsPerStep, zeroMicrons: p.zeroMicrons, precision: p.precision, notes: '預設參考值，可依實際校正' }
+          : { name: rec.grinderName, unit: '格', precision: 1, zeroMicrons: 0 }).id;
+      }
+      if (rec.grinderId || !rec.grinderName) delete rec.grinderName;
+
+      rec.stages = (rec.stages || []).filter((s) => s.amount || C.stageEnd(s) !== null || s.label || s.technique);
+      rec.stages.forEach((s) => {
+        s.end = C.stageEnd(s);
+        if (!s.label) delete s.label;
+        if (!s.technique) delete s.technique;
+      });
+      if (!METHODS[rec.method].stages) rec.stages = [];
+      if (rec.totalTime) {
+        const t = C.parseTime(rec.totalTime);
+        if (t !== null) rec.totalTime = C.formatTime(t);
+      }
+      S.upsert('brews', rec);
+      go('#/brew/' + rec.id);
+    }
+
+    function bind() {
+      const form = $('#brew-form', page);
+      form.addEventListener('input', onInput);
+      form.addEventListener('change', onInput);
+      form.addEventListener('click', onClick);
+      form.addEventListener('submit', onSubmit);
+    }
+
+    draw();
+  }
+
+  // ---------- 豆子 ----------
+
+  function renderBeanList(q) {
+    const showArchived = q.get('all') === '1';
+    const beans = S.all('beans').filter((b) => showArchived || !b.archived)
+      .sort((x, y) => String(y.roastDate || '').localeCompare(String(x.roastDate || '')));
+    const archivedCount = S.all('beans').filter((b) => b.archived).length;
+
+    mount(`<div class="page">
+      ${header('豆子', { action: '<a class="btn primary small" href="#/bean/new">＋ 新增</a>' })}
+      <div class="list">${beans.length ? beans.map((b) => {
+        const brews = beanBrews(b.id);
+        const rd = C.restDays(b.roastDate);
+        const rem = remaining(b);
+        const best = bestBrew(b.id);
+        return `<a class="card bean-card ${b.archived ? 'archived' : ''}" href="#/bean/${b.id}">
+          ${photoImg(b, 'thumb', '')}
+          <div class="grow">
+            <div class="row"><strong class="grow">${esc(b.name)}</strong>${b.roast ? `<span class="tag">${esc(b.roast)}</span>` : ''}</div>
+            <div class="meta">${esc([b.roaster, b.process].filter(Boolean).join(' · '))}</div>
+            <div class="row small muted">
+              ${rd !== null ? `<span>養豆 ${rd} 天</span>` : ''}
+              ${rem !== null ? `<span>剩 ${rem}g</span>` : ''}
+              <span>${brews.length} 筆記錄</span>
+              ${best ? `<span class="best">最佳 ${esc(summary(best))}</span>` : ''}
+            </div>
+          </div>
+        </a>`;
+      }).join('') : '<div class="empty"><p>還沒有豆子。</p><p><a class="btn primary" href="#/bean/new">新增第一支豆子</a></p></div>'}</div>
+      ${archivedCount ? `<p class="center"><a href="#/beans${showArchived ? '' : '?all=1'}">${showArchived ? '隱藏' : '顯示'}已喝完的豆子（${archivedCount}）</a></p>` : ''}
+    </div>`);
+  }
+
+  function renderBeanDetail(id) {
+    const bean = S.get('beans', id);
+    if (!bean) return notFound();
+    const brews = beanBrews(id);
+    const rd = C.restDays(bean.roastDate);
+    const rem = remaining(bean);
+    const methods = METHOD_KEYS.filter((k) => brews.some((b) => b.method === k));
+    const info = [['烘豆商', bean.roaster], ['產區', bean.origin], ['品種', bean.variety], ['處理法', bean.process],
+      ['烘焙度', bean.roast], ['烘焙日', bean.roastDate && `${bean.roastDate}（第 ${rd} 天）`],
+      ['重量', bean.weight && `${bean.weight} g${rem !== null ? `，剩約 ${rem} g` : ''}`], ['價格', bean.price]]
+      .filter((x) => x[1]);
+
+    const page = mount(`<div class="page">
+      ${header(bean.name, { back: '#/beans', action: `<a class="btn small" href="#/bean/${id}/edit">編輯</a>` })}
+      <section class="card">
+        ${photoImg(bean, 'bean-photo', bean.name + ' 包裝照片')}
+        ${info.length ? `<div class="stats">${info.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
+        ${bean.flavor ? `<p><b>風味標示：</b>${esc(bean.flavor)}</p>` : ''}
+        ${bean.notes ? `<p class="muted">${esc(bean.notes)}</p>` : ''}
+        ${!info.length && !bean.flavor && !hasPhoto(bean) ? `<p class="muted">還沒有規格資料，<a href="#/bean/${id}/edit">拍照或填寫</a>。</p>` : ''}
+      </section>
+      ${methods.map((k) => {
+        const best = bestBrew(id, k);
+        if (!best) return '';
+        return `<section class="card best-card">
+          <div class="card-head"><h2>${best.isBest ? '★ 最佳' : '評分最高的'}${METHODS[k].label}配方</h2>${stars(best.rating)}</div>
+          <div class="meta">${esc(summary(best))}</div>
+          ${stagesTable(best.stages)}
+          ${best.nextTime ? `<p class="note">下次調整：${esc(best.nextTime)}</p>` : ''}
+          <div class="actions">
+            <a class="btn primary small" href="#/timer/${best.id}">⏱ 跟著計時</a>
+            <a class="btn small" href="#/brew/new?from=${best.id}">用這個配方再沖</a>
+            <a class="btn ghost small" href="#/brew/${best.id}">詳細</a>
+          </div>
+        </section>`;
+      }).join('')}
+      <div class="actions">
+        <a class="btn primary" href="#/brew/new?bean=${id}">＋ 用這支豆子沖一杯</a>
+        <button class="btn ghost" data-act="archive">${bean.archived ? '移回架上' : '標記為已喝完'}</button>
+      </div>
+      <h2 class="section-title">所有記錄（${brews.length}）</h2>
+      <div class="list">${brews.map((b) => brewCard(b, { hideBean: true })).join('') || '<p class="muted">還沒有記錄。</p>'}</div>
+      <p class="center"><button class="btn danger ghost small" data-act="del">刪除這支豆子</button></p>
+    </div>`);
+
+    page.addEventListener('click', async (e) => {
+      const act = e.target.closest('[data-act]');
+      if (!act) return;
+      if (act.dataset.act === 'archive') {
+        bean.archived = !bean.archived;
+        S.upsert('beans', bean);
+        renderBeanDetail(id);
+      } else if (act.dataset.act === 'del') {
+        const msg = brews.length ? `這支豆子有 ${brews.length} 筆記錄，刪除後記錄會保留但顯示為「未指定豆子」。確定刪除？` : '確定刪除這支豆子？';
+        if (await ask(msg, '刪除', true)) {
+          deletePhoto(bean);
+          S.remove('beans', id);
+          go('#/beans');
+        }
+      }
+    });
+  }
+
+  // ---------- 照片 ----------
+
+  async function useCap(name) {
+    if (!CLAUDE || !(window.claude && window.claude.use)) return null;
+    try { return await window.claude.use(name); } catch (e) { return null; }
+  }
+
+  /** 刪除豆子照片檔（claude.ai 的檔案或試算表的照片分頁）；data URL 不用處理 */
+  async function deletePhoto(ref) {
+    if (!ref) return;
+    if (ref.photoKey && SHEET) S.gas('deletePhoto', ref.photoKey).catch(() => {});
+    if (ref.photoId) {
+      const assets = await useCap('assets');
+      if (assets) assets.delete(ref.photoId).catch(() => {});
+    }
+  }
+
+  const samePhoto = (a, b) => !!a && !!b && ((a.photoId && a.photoId === b.photoId) || (a.photoKey && a.photoKey === b.photoKey));
+
+  /** 縮小照片並轉成 JPEG */
+  function shrinkImage(file, maxSide, quality) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * k);
+        canvas.height = Math.round(img.naturalHeight * k);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('照片轉換失敗'))), 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('無法讀取這張照片')); };
+      img.src = url;
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(new Error('照片轉換失敗'));
+      r.readAsDataURL(blob);
+    });
+  }
+
+  /** 這個環境能不能請 Claude 讀照片（claude.ai 頁面才有） */
+  async function labelReader() {
+    const sample = await useCap('sample');
+    if (!sample) return null;
+    const caps = await sample.limits().catch(() => null);
+    return caps && caps.images ? sample : null;
+  }
+
+  const LABEL_PROMPT = `這是一包咖啡豆的包裝或規格卡照片。請讀出上面寫的資訊，只回傳一個 JSON 物件，只放照片上讀得到的欄位，讀不到的就不要放、不要猜：
+- name：豆子名稱，例如「衣索比亞 耶加雪菲 G1」
+- roaster：烘豆商
+- origin：國家、產區、莊園或處理廠
+- variety：品種
+- process：處理法，例如 水洗、日曬、蜜處理、厭氧發酵
+- roast：烘焙度，只能是 極淺焙、淺焙、中淺焙、中焙、中深焙、深焙 其中之一
+- roastDate：烘焙日期，格式 YYYY-MM-DD
+- weight：淨重，單位克，只填數字
+- price：價格
+- flavor：風味描述，用頓號分隔
+- notes：其他有用的資訊，例如海拔、批次、生產者
+文字用繁體中文，品種、莊園等專有名詞可保留原文。
+範例：{"name":"肯亞 AA","process":"水洗","roast":"淺焙","weight":200}`;
+
+  function sampleErrorText(e) {
+    const code = e && e.code;
+    if (code === 'not_granted' || code === 'sampling_disabled') return '沒有允許讀取照片，請手動填寫。';
+    if (code === 'rate_limited') return '讀取太頻繁或用量已達上限，請稍後再試或手動填寫。';
+    if (code === 'image_rejected') return '這張照片無法讀取，請換一張清楚的照片。';
+    if (code === 'cancelled') return '';
+    return '沒有讀到規格，請手動填寫。';
+  }
+
+  function renderBeanForm(id) {
+    const editing = id ? S.get('beans', id) : null;
+    if (id && !editing) return notFound();
+    const b = editing ? clone(editing) : { roastDate: '' };
+    const oldPhoto = editing && hasPhoto(editing) ? { photoId: editing.photoId, photoKey: editing.photoKey } : null;
+    const text = (f, label, ph, extra) => field(label, `<input name="${f}" value="${esc(b[f])}" placeholder="${esc(ph || '')}" ${extra || ''}>`);
+    let previewSrc = ''; // 這次編輯新選的照片（立即預覽用）
+    let reader = null;
+
+    const page = mount(`<div class="page">
+      ${header(editing ? '編輯豆子' : '新增豆子', { back: editing ? '#/bean/' + id : '#/beans' })}
+      <form id="bean-form" autocomplete="off">
+        <section class="card">
+          <div class="card-head"><h2>規格照片</h2></div>
+          <div id="photo-box"></div>
+          <div class="actions">
+            <button type="button" class="btn" data-act="camera">拍照</button>
+            <button type="button" class="btn ghost" data-act="pick">從相簿選</button>
+            <button type="button" class="btn ghost danger" data-act="photo-del" hidden>移除照片</button>
+          </div>
+          <div id="photo-status" class="hint" role="status"></div>
+          <input type="file" accept="image/*" capture="environment" id="cam-in" hidden>
+          <input type="file" accept="image/*" id="pick-in" hidden>
+        </section>
+        <section class="card">
+          ${text('name', '名稱 *', '例：衣索比亞 耶加雪菲 G1', 'required')}
+          <div class="grid2">
+            ${text('roaster', '烘豆商', '')}
+            ${text('origin', '產區 / 莊園', '')}
+            ${text('variety', '品種', '例：藝伎、SL28')}
+            ${text('process', '處理法', '', 'list="process-list"')}
+            ${field('烘焙度', `<select name="roast"><option value="">—</option>${ROASTS.map((r) => `<option ${b.roast === r ? 'selected' : ''}>${r}</option>`).join('')}</select>`)}
+            ${field('烘焙日期', `<input type="date" name="roastDate" value="${esc(b.roastDate)}">`)}
+            ${field('重量 g', `<input type="number" step="any" inputmode="decimal" name="weight" value="${esc(b.weight)}" placeholder="用來估算剩餘量">`)}
+            ${text('price', '價格', '例：NT$ 450 / 200g')}
+          </div>
+          ${text('flavor', '風味標示', '例：茉莉花、檸檬、紅茶')}
+          ${field('備註', `<textarea name="notes" rows="2">${esc(b.notes)}</textarea>`)}
+        </section>
+        <div class="form-actions">
+          <a class="btn ghost" href="${editing ? '#/bean/' + id : '#/beans'}">取消</a>
+          <button class="btn primary" type="submit">儲存</button>
+        </div>
+      </form>
+      <datalist id="process-list">${PROCESSES.map((p) => `<option value="${p}">`).join('')}</datalist>
+    </div>`);
+
+    const form = $('#bean-form', page);
+    const status = (msg) => { $('#photo-status', page).textContent = msg; };
+
+    function renderPhoto() {
+      const box = $('#photo-box', page);
+      box.innerHTML = previewSrc
+        ? `<img class="bean-photo" src="${esc(previewSrc)}" alt="豆子包裝照片">`
+        : hasPhoto(b)
+          ? photoImg(b, 'bean-photo', '豆子包裝照片')
+          : `<div class="photo-empty">拍下包裝上的規格標籤${reader ? '，會自動讀取並填入下面的欄位' : '，方便日後對照'}</div>`;
+      hydratePhotos(box);
+      $('[data-act="photo-del"]', page).hidden = !hasPhoto(b);
+    }
+
+    /** 只填空白欄位，回傳填了幾個 */
+    function fill(data) {
+      if (!data || typeof data !== 'object') return 0;
+      let n = 0;
+      ['name', 'roaster', 'origin', 'variety', 'process', 'roast', 'roastDate', 'weight', 'price', 'flavor', 'notes'].forEach((k) => {
+        let v = data[k];
+        if (v === null || v === undefined || String(v).trim() === '') return;
+        v = String(v).trim();
+        if (k === 'roast' && !ROASTS.includes(v)) return;
+        if (k === 'roastDate' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+        if (k === 'weight') { v = C.num(v); if (v === null) return; }
+        const el = form.elements[k];
+        if (!el || String(el.value).trim()) return;
+        el.value = v;
+        el.classList.add('filled');
+        n++;
+      });
+      return n;
+    }
+
+    async function onPhoto(file) {
+      if (!file) return;
+      status('處理照片中…');
+      try {
+        const big = await shrinkImage(file, 1600, 0.85);
+        const before = { photoId: b.photoId, photoKey: b.photoKey };
+        let stored = false;
+        if (SHEET) {
+          // 存到試算表的照片分頁
+          const dataUrl = await blobToDataUrl(await shrinkImage(file, 1000, 0.75));
+          status('上傳照片到試算表…');
+          const key = await S.gas('savePhoto', dataUrl);
+          photoCache[key] = Promise.resolve(dataUrl);
+          Object.assign(b, { photoKey: key });
+          delete b.photoId;
+          delete b.photo;
+          previewSrc = dataUrl;
+          stored = true;
+        }
+        const assets = stored ? null : await useCap('assets');
+        if (assets) {
+          try {
+            const r = await assets.upload(big, { type: 'image/jpeg' });
+            b.photoId = r.id;
+            delete b.photo;
+            delete b.photoKey;
+            previewSrc = r.url;
+            stored = true;
+          } catch (e) { /* 改存縮圖 */ }
+        }
+        if (!stored) {
+          b.photo = await blobToDataUrl(await shrinkImage(file, 900, 0.7));
+          delete b.photoId;
+          delete b.photoKey;
+          previewSrc = b.photo;
+        }
+        if (!samePhoto(before, oldPhoto)) deletePhoto(before); // 這次編輯中上傳過、又換掉的
+        renderPhoto();
+        if (!reader) { status(''); return; }
+        status('正在讀取規格…（第一次會詢問是否允許 Claude 讀取照片）');
+        try {
+          const n = fill(await reader.json(LABEL_PROMPT, { images: big }));
+          status(n ? `已從照片填入 ${n} 個欄位，請確認是否正確。` : '照片上沒有讀到可以填入的新資訊。');
+        } catch (e) {
+          status(sampleErrorText(e));
+        }
+      } catch (e) {
+        status(e.message || '照片處理失敗');
+      }
+    }
+
+    page.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-act]');
+      if (!act) return;
+      if (act.dataset.act === 'camera') $('#cam-in', page).click();
+      else if (act.dataset.act === 'pick') $('#pick-in', page).click();
+      else if (act.dataset.act === 'photo-del') {
+        if (!samePhoto(b, oldPhoto)) deletePhoto(b);
+        delete b.photoId;
+        delete b.photoKey;
+        delete b.photo;
+        previewSrc = '';
+        renderPhoto();
+        status('');
+      }
+    });
+    ['#cam-in', '#pick-in'].forEach((sel) => {
+      const input = $(sel, page);
+      input.addEventListener('change', () => { onPhoto(input.files[0]); input.value = ''; });
+    });
+    form.addEventListener('input', (e) => e.target.classList.remove('filled'));
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      fd.forEach((v, k) => { if (k) b[k] = k === 'weight' ? C.num(v) : String(v).trim(); });
+      if (oldPhoto && !samePhoto(oldPhoto, b)) deletePhoto(oldPhoto);
+      S.upsert('beans', b);
+      go('#/bean/' + b.id);
+    });
+
+    renderPhoto();
+    labelReader().then((r) => { reader = r; if (page.isConnected) renderPhoto(); });
+  }
+
+  // ---------- 計時器 ----------
+
+  function renderTimer(id) {
+    if (!id) return renderTimerPicker();
+    const free = id === 'free';
+    const brew = free ? null : S.get('brews', id);
+    if (!free && !brew) return notFound();
+
+    // 每段的秒數是「這段結束」的時間
+    const stages = brew ? C.migrateStages(brew.stages || [], brew.totalTime).filter((s) => C.stageEnd(s) !== null) : [];
+    const cum = C.cumulative(stages);
+    const target = brew ? C.parseTime(brew.totalTime) : null;
+
+    const page = mount(`<div class="page timer-page">
+      ${header('計時沖煮', { back: brew ? '#/brew/' + id : '#/timer' })}
+      <section class="card center">
+        <div class="muted">${brew ? esc(brewBeanName(brew)) + ' · ' + esc(summary(brew)) : '自由計時：每段注水結束時按「這段結束」'}</div>
+        <div id="clock" class="clock">0:00</div>
+        ${target !== null ? `<div class="muted">目標總時間 ${esc(brew.totalTime)}</div>` : ''}
+      </section>
+      ${stages.length ? '<section class="card now" id="now"></section>' : ''}
+      <div class="timer-controls">
+        <button class="btn" id="reset">重設</button>
+        <button class="btn primary big" id="toggle">開始</button>
+        ${free ? '<button class="btn" id="lap" disabled>這段結束</button>' : ''}
+      </div>
+      ${stages.length ? `<ol class="stage-list" id="slist">${stages.map((s, i) => `<li>
+        <span class="stage-no">${i + 1}</span>
+        <span class="grow">${s.amount ? '注水 ' + esc(s.amount) + 'g' : esc(s.label || '等待')}<small>${esc([s.amount ? s.label : '', s.technique].filter(Boolean).join(' · '))}</small></span>
+        <span class="r mono">${C.formatTime(C.stageEnd(s))}<small>累計 ${cum[i]}g</small></span></li>`).join('')}</ol>` : ''}
+      ${free ? '<ol class="stage-list" id="laps"></ol>' : ''}
+      <label class="check center-check"><input type="checkbox" id="sound" checked> 段落提示音與震動</label>
+      <button class="btn block" id="finish">完成，存成記錄</button>
+    </div>`);
+
+    const clock = $('#clock', page);
+    const now = $('#now', page);
+    const toggleBtn = $('#toggle', page);
+    const lapBtn = $('#lap', page);
+    let running = false;
+    let startAt = 0;
+    let acc = 0;
+    let timerId = null;
+    let lastIdx = -1;
+    let lastCount = '';
+    let targetCued = false;
+    let laps = [];
+    let audio = null;
+    let wakeLock = null;
+
+    const elapsed = () => acc + (running ? (performance.now() - startAt) / 1000 : 0);
+    const soundOn = () => $('#sound', page).checked;
+
+    function beep(freq, dur) {
+      if (!soundOn()) return;
+      try {
+        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+        const o = audio.createOscillator();
+        const g = audio.createGain();
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.25, audio.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + dur);
+        o.connect(g).connect(audio.destination);
+        o.start();
+        o.stop(audio.currentTime + dur);
+      } catch (e) { /* 不支援音效就略過 */ }
+    }
+
+    function buzz(ms) {
+      if (soundOn() && navigator.vibrate) navigator.vibrate(ms);
+    }
+
+    function renderNow(t) {
+      if (!now) return;
+      const idx = C.stageIndexAt(stages, t);
+      const cur = stages[idx];
+      let html;
+      if (cur) {
+        const end = C.stageEnd(cur);
+        const left = Math.max(0, Math.ceil(end - t));
+        html = `<div class="now-label">第 ${idx + 1} 段${cur.label ? ' · ' + esc(cur.label) : ''}</div>
+          <div class="now-amount">${cur.amount ? `注水 <b>${esc(cur.amount)}</b> g → 累計 <b>${cum[idx]}</b> g` : '等待'}</div>
+          <div class="now-end">${C.formatTime(end)} 結束，還有 <b>${left}</b> 秒</div>
+          ${cur.technique ? `<div class="now-tech">${esc(cur.technique)}</div>` : ''}`;
+        const next = stages[idx + 1];
+        if (next) html += `<div class="now-next">下一段：${next.amount ? `注水 ${esc(next.amount)} g` : esc(next.label || '等待')}，到 ${C.formatTime(C.stageEnd(next))}</div>`;
+      } else {
+        html = `<div class="now-label">注水完成</div><div class="now-amount">總共 <b>${cum[cum.length - 1]}</b> g，等待滴濾結束</div>`;
+      }
+      now.innerHTML = html;
+      $$('#slist li', page).forEach((li, i) => {
+        li.classList.toggle('active', i === idx);
+        li.classList.toggle('done', i < idx);
+      });
+    }
+
+    function tick() {
+      const t = elapsed();
+      clock.textContent = C.formatTime(Math.floor(t));
+      if (target !== null) clock.classList.toggle('over', t >= target);
+      if (running && target !== null && !targetCued && t >= target) {
+        targetCued = true;
+        beep(988, 0.15);
+        setTimeout(() => beep(988, 0.3), 220);
+      }
+      if (!stages.length) return;
+      const idx = C.stageIndexAt(stages, t);
+      if (running) {
+        // 開始或換段時提示；目前這段結束前 3、2、1 秒短嗶
+        if (idx !== lastIdx) { beep(880, 0.35); buzz(300); }
+        lastIdx = idx;
+        const cur = stages[idx];
+        if (cur) {
+          const left = Math.ceil(C.stageEnd(cur) - t);
+          const key = idx + ':' + left;
+          if (left >= 1 && left <= 3 && key !== lastCount) { lastCount = key; beep(660, 0.08); }
+        }
+      }
+      renderNow(t);
+    }
+
+    async function keepAwake(on) {
+      try {
+        if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+        else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+      } catch (e) { /* 不支援就略過 */ }
+    }
+
+    function renderLaps() {
+      const el = $('#laps', page);
+      if (el) el.innerHTML = laps.map((t, i) => `<li><span class="stage-no">${i + 1}</span><span class="grow">第 ${i + 1} 段</span><span class="r mono">${C.formatTime(t)} 結束</span></li>`).join('');
+    }
+
+    function start() {
+      running = true;
+      startAt = performance.now();
+      toggleBtn.textContent = '暫停';
+      if (lapBtn) lapBtn.disabled = false;
+      timerId = setInterval(tick, 200);
+      keepAwake(true);
+      tick();
+    }
+
+    function pause() {
+      acc = elapsed();
+      running = false;
+      clearInterval(timerId);
+      toggleBtn.textContent = '繼續';
+      keepAwake(false);
+    }
+
+    function reset() {
+      pause();
+      acc = 0;
+      lastIdx = -1;
+      lastCount = '';
+      targetCued = false;
+      laps = [];
+      renderLaps();
+      toggleBtn.textContent = '開始';
+      if (lapBtn) lapBtn.disabled = true;
+      tick();
+    }
+
+    toggleBtn.addEventListener('click', () => (running ? pause() : start()));
+    $('#reset', page).addEventListener('click', reset);
+    if (lapBtn) lapBtn.addEventListener('click', () => { laps.push(Math.floor(elapsed())); renderLaps(); beep(880, 0.1); });
+    $('#finish', page).addEventListener('click', () => {
+      const t = Math.round(elapsed());
+      pause();
+      if (brew) {
+        go(`#/brew/new?from=${id}${t ? '&time=' + t : ''}`);
+      } else {
+        pending = {
+          method: 'pourover',
+          totalTime: t ? C.formatTime(t) : '',
+          stages: (laps.length ? laps : [t]).map((end) => ({ amount: null, end })),
+        };
+        go('#/brew/new?pending=1');
+      }
+    });
+
+    cleanup = () => { clearInterval(timerId); keepAwake(false); if (audio) audio.close(); };
+    tick();
+  }
+
+  function renderTimerPicker() {
+    const brews = S.all('brews').slice().sort(byDateDesc);
+    const best = brews.filter((b) => b.isBest);
+    const recent = brews.filter((b) => !b.isBest).slice(0, 8);
+    mount(`<div class="page">
+      ${header('計時沖煮')}
+      <a class="card link-card" href="#/timer/free"><strong>自由計時</strong><div class="muted small">邊沖邊按「分段」，結束後自動帶入記錄的分段時間</div></a>
+      ${best.length ? `<h2 class="section-title">★ 最佳配方</h2><div class="list">${best.map((b) => brewCard(b).replace('#/brew/', '#/timer/')).join('')}</div>` : ''}
+      ${recent.length ? `<h2 class="section-title">最近的記錄</h2><div class="list">${recent.map((b) => brewCard(b).replace('#/brew/', '#/timer/')).join('')}</div>` : ''}
+      ${!brews.length ? '<p class="empty">存了記錄之後，就能在這裡跟著分段時間與水量計時沖煮。</p>' : ''}
+    </div>`);
+  }
+
+  // ---------- 工具 ----------
+
+  function renderTools(q) {
+    const t = q.get('t') || 'ratio';
+    const tabs = [['ratio', '水粉比'], ['scale', '配方縮放'], ['grind', '研磨換算']];
+    const page = mount(`<div class="page">
+      ${header('工具')}
+      <div class="seg tabs">${tabs.map(([k, l]) => `<a class="${t === k ? 'on' : ''}" href="#/tools?t=${k}">${l}</a>`).join('')}</div>
+      <div id="tool"></div>
+    </div>`);
+    const el = $('#tool', page);
+    if (t === 'scale') scaleTool(el);
+    else if (t === 'grind') grindTool(el);
+    else ratioTool(el);
+  }
+
+  function ratioTool(el) {
+    const st = { dose: 15, ratio: 16, water: 240 };
+    el.innerHTML = `<section class="card">
+      <div class="chips">${RATIO_PRESETS.map(([l, r]) => `<button type="button" class="chip" data-ratio="${r}">${l}</button>`).join('')}</div>
+      <div class="grid3">
+        ${field('粉量 g', '<input type="number" step="any" inputmode="decimal" id="rt-dose">')}
+        ${field('水粉比 1:', '<input type="number" step="any" inputmode="decimal" id="rt-ratio">')}
+        ${field('水量 / 萃取量 g', '<input type="number" step="any" inputmode="decimal" id="rt-water">')}
+      </div>
+      <p class="muted small">改粉量或比例 → 算水量；改水量 → 依比例反推粉量。</p>
+      <div id="rt-out" class="hint"></div>
+      <table class="table" id="rt-table"></table>
+    </section>`;
+    const inp = { dose: $('#rt-dose', el), ratio: $('#rt-ratio', el), water: $('#rt-water', el) };
+
+    function show(except) {
+      Object.keys(inp).forEach((k) => { if (k !== except) inp[k].value = st[k] === null ? '' : st[k]; });
+      const bev = st.ratio >= 8 ? C.estimatedBeverage(st.water, st.dose) : null;
+      $('#rt-out', el).innerHTML = bev !== null ? `濾泡式預估萃取液約 <b>${bev}</b> g` : '';
+      const ratios = st.ratio >= 8 ? [13, 14, 15, 16, 17, 18] : [1.5, 2, 2.5, 3];
+      $('#rt-table', el).innerHTML = `<thead><tr><th>比例</th><th class="r">${esc(st.dose || '—')}g 粉 → 水</th><th class="r">${esc(st.water || '—')}g 水 → 粉</th></tr></thead>
+        <tbody>${ratios.map((r) => `<tr class="${r === st.ratio ? 'hl' : ''}"><td>1:${r}</td><td class="r mono">${C.waterFromDose(st.dose, r) ?? '—'}</td><td class="r mono">${C.doseFromWater(st.water, r) ?? '—'}</td></tr>`).join('')}</tbody>`;
+    }
+
+    el.addEventListener('input', (e) => {
+      const k = Object.keys(inp).find((x) => inp[x] === e.target);
+      if (!k) return;
+      st[k] = C.num(e.target.value);
+      if (k === 'water') st.dose = C.doseFromWater(st.water, st.ratio);
+      else st.water = C.waterFromDose(st.dose, st.ratio);
+      show(k);
+    });
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ratio]');
+      if (!b) return;
+      st.ratio = +b.dataset.ratio;
+      if (st.ratio < 8 && st.dose > 22) st.dose = 18; // 切到義式時給個合理粉量
+      st.water = C.waterFromDose(st.dose, st.ratio);
+      show();
+    });
+    show();
+  }
+
+  function scaleTool(el) {
+    const brews = S.all('brews').filter((b) => b.stages && b.stages.length).sort(byDateDesc);
+    if (!brews.length) {
+      el.innerHTML = '<p class="empty">需要至少一筆有分段注水的記錄，才能等比例縮放配方。</p>';
+      return;
+    }
+    const first = brews.find((b) => b.isBest) || brews[0];
+    el.innerHTML = `<section class="card">
+      ${field('原配方', `<select id="sc-brew">${brews.map((b) => `<option value="${b.id}" ${b.id === first.id ? 'selected' : ''}>${b.isBest ? '★ ' : ''}${esc(brewBeanName(b))} · ${esc(summary(b))}</option>`).join('')}</select>`)}
+      <div class="grid2">
+        ${field('新的粉量 g', '<input type="number" step="any" inputmode="decimal" id="sc-dose">')}
+        ${field('水粉比 1:', '<input type="number" step="any" inputmode="decimal" id="sc-ratio">')}
+      </div>
+      <div id="sc-out"></div>
+      <button class="btn primary block" id="sc-use">用縮放後的配方新增記錄</button>
+    </section>`;
+    const sel = $('#sc-brew', el);
+    const doseIn = $('#sc-dose', el);
+    const ratioIn = $('#sc-ratio', el);
+    let result = null;
+
+    function load() {
+      const b = S.get('brews', sel.value);
+      doseIn.value = b.dose || '';
+      ratioIn.value = b.ratio || C.ratioOf(b.dose, C.stagesTotal(b.stages)) || '';
+      calc();
+    }
+    function calc() {
+      const b = S.get('brews', sel.value);
+      const dose = C.num(doseIn.value);
+      const water = C.waterFromDose(dose, ratioIn.value);
+      if (water === null) { $('#sc-out', el).innerHTML = ''; result = null; return; }
+      const stages = C.scaleStages(b.stages, water);
+      result = { src: b, dose, ratio: C.num(ratioIn.value), water, stages };
+      $('#sc-out', el).innerHTML = `<p>總水量 <b>${water}</b> g（原 ${b.water || C.stagesTotal(b.stages)} g）</p>${stagesTable(stages)}`;
+    }
+    sel.addEventListener('change', load);
+    doseIn.addEventListener('input', calc);
+    ratioIn.addEventListener('input', calc);
+    $('#sc-use', el).addEventListener('click', () => {
+      if (!result) return;
+      const p = { beanId: result.src.beanId };
+      RECIPE_FIELDS.forEach((f) => { if (result.src[f] !== undefined) p[f] = result.src[f]; });
+      Object.assign(p, { dose: result.dose, ratio: result.ratio, water: result.water, stages: result.stages });
+      pending = p;
+      go('#/brew/new?pending=1');
+    });
+    load();
+  }
+
+  function grindTool(el) {
+    const all = S.all('grinders');
+    const gs = all.filter(C.canConvert);
+    const presetButtons = C.GRINDER_PRESETS.filter((p) => !all.some((g) => g.name === p.name))
+      .map((p) => `<button type="button" class="chip" data-preset="${p.key}">＋ ${esc(p.name)}</button>`).join('');
+
+    if (!gs.length) {
+      el.innerHTML = `<section class="card">
+        <p>研磨換算需要至少一台設定了「每格微米」的磨豆機。可以直接加入常見機型（數值為參考值）：</p>
+        <div class="chips">${presetButtons}</div>
+        <p><a href="#/grinder/new">或自訂磨豆機</a></p>
+      </section>`;
+      el.onclick = (e) => {
+        const b = e.target.closest('[data-preset]');
+        if (b) { addPreset(b.dataset.preset); grindTool(el); }
+      };
+      return;
+    }
+
+    const opts = (sel) => gs.map((g) => `<option value="${g.id}" ${g.id === sel ? 'selected' : ''}>${esc(g.name)}</option>`).join('');
+    el.innerHTML = `<section class="card"><h2>刻度換算</h2>
+        <div class="grid2">
+          ${field('磨豆機', `<select id="gd-from">${opts(gs[0].id)}</select>`)}
+          ${field('刻度', '<input id="gd-set" inputmode="decimal" placeholder="例：24">')}
+        </div>
+        <div id="gd-out" class="hint"></div>
+        <table class="table" id="gd-table"></table>
+      </section>
+      <section class="card"><h2>各沖煮法建議刻度</h2>
+        <p class="muted small">依常見粒徑範圍換算，只是起點，實際依口感微調。</p>
+        <div class="scroll-x"><table class="table">
+          <thead><tr><th>沖煮法</th><th class="r">µm</th>${gs.map((g) => `<th class="r">${esc(g.name)}</th>`).join('')}</tr></thead>
+          <tbody>${C.METHOD_RANGES.map((r) => `<tr><td>${r.label}</td><td class="r mono">${r.min}–${r.max}</td>${gs.map((g) => `<td class="r mono">${C.grinderSetting(g, r.min)}–${C.grinderSetting(g, r.max)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table></div>
+      </section>
+      ${gs.length > 1 ? `<section class="card"><h2>同杯校正</h2>
+        <p class="muted small">兩台磨出來口感相同時，記下各自的刻度，就能讓換算更貼近你手上的機器（會調整第二台的零點）。</p>
+        <div class="grid2">
+          ${field('磨豆機 A', `<select id="cb-a">${opts(gs[0].id)}</select>`)}
+          ${field('A 的刻度', '<input id="cb-as" inputmode="decimal">')}
+          ${field('磨豆機 B（要校正）', `<select id="cb-b">${opts(gs[1].id)}</select>`)}
+          ${field('B 的刻度', '<input id="cb-bs" inputmode="decimal">')}
+        </div>
+        <button class="btn block" id="cb-go">校正 B</button>
+      </section>` : ''}
+      ${presetButtons ? `<section class="card"><h2>加入其他常見磨豆機</h2><div class="chips">${presetButtons}</div></section>` : ''}`;
+
+    function calc() {
+      const from = S.get('grinders', $('#gd-from', el).value);
+      const set = $('#gd-set', el).value;
+      const mic = C.grinderMicrons(from, set);
+      if (mic === null) { $('#gd-out', el).innerHTML = ''; $('#gd-table', el).innerHTML = ''; return; }
+      const ms = C.methodsForMicrons(mic).map((r) => r.label);
+      $('#gd-out', el).innerHTML = `≈ <b>${mic}</b> µm${ms.length ? ' · 落在：' + ms.join('、') + ' 範圍' : ''}`;
+      const others = gs.filter((g) => g.id !== from.id);
+      $('#gd-table', el).innerHTML = others.length
+        ? `<tbody>${others.map((g) => `<tr><td>${esc(g.name)}</td><td class="r mono"><b>${C.grinderSetting(g, mic)}</b> ${esc(unitOf(g))}</td></tr>`).join('')}</tbody>`
+        : '';
+    }
+    $('#gd-from', el).addEventListener('change', calc);
+    $('#gd-set', el).addEventListener('input', calc);
+
+    const cb = $('#cb-go', el);
+    if (cb) cb.addEventListener('click', async () => {
+      const a = S.get('grinders', $('#cb-a', el).value);
+      const b = S.get('grinders', $('#cb-b', el).value);
+      if (a.id === b.id) return toast('請選兩台不同的磨豆機');
+      const zero = C.calibrateZero(a, $('#cb-as', el).value, b, $('#cb-bs', el).value);
+      if (zero === null) return toast('請填寫兩邊的刻度');
+      if (!await ask(`把「${b.name}」的零點偏移由 ${b.zeroMicrons || 0} µm 改為 ${zero} µm？`, '校正')) return;
+      b.zeroMicrons = zero;
+      S.upsert('grinders', b);
+      toast('已校正');
+      grindTool(el);
+    });
+    el.onclick = (e) => {
+      const b = e.target.closest('[data-preset]');
+      if (b) { addPreset(b.dataset.preset); grindTool(el); }
+    };
+  }
+
+  function addPreset(key) {
+    const p = C.GRINDER_PRESETS.find((x) => x.key === key);
+    if (!p) return;
+    S.upsert('grinders', { name: p.name, unit: '格', micronsPerStep: p.micronsPerStep, zeroMicrons: p.zeroMicrons, precision: p.precision, notes: '預設參考值，可依實際校正' });
+    toast('已加入 ' + p.name);
+  }
+
+  // ---------- 設定 ----------
+
+  function renderSettings() {
+    const grinders = S.all('grinders');
+    const presets = C.GRINDER_PRESETS.filter((p) => !grinders.some((g) => g.name === p.name));
+    const page = mount(`<div class="page">
+      ${header('設定')}
+      <section class="card"><div class="card-head"><h2>磨豆機</h2><a class="btn small" href="#/grinder/new">＋ 自訂</a></div>
+        <div class="list tight">${grinders.map((g) => `<a class="item" href="#/grinder/${g.id}/edit">
+          <strong>${esc(g.name)}</strong>
+          <span class="muted small">${C.canConvert(g) ? `每${esc(unitOf(g))} ${g.micronsPerStep} µm${g.zeroMicrons ? `，零點 ${g.zeroMicrons} µm` : ''}` : '未設定換算'}</span></a>`).join('') || '<p class="muted">還沒有磨豆機。</p>'}</div>
+        ${presets.length ? `<p class="muted small">快速加入常見機型（每格微米為參考值）：</p><div class="chips">${presets.map((p) => `<button type="button" class="chip" data-preset="${p.key}">＋ ${esc(p.name)}</button>`).join('')}</div>` : ''}
+      </section>
+
+      <section class="card"><h2>資料與備份</h2>
+        <p class="muted small">${S.backend === 'sheet'
+          ? '資料存在你的 Google 試算表（「豆子」「磨豆機」「沖煮記錄」分頁，一列一筆）。可以直接在試算表查看或修改文字與數字；最右邊的「其他資料」欄請勿修改。'
+          : S.backend === 'db'
+            ? '資料存在這個頁面的雲端資料庫，用同一個帳號在手機或電腦打開都看得到。仍建議偶爾匯出備份。'
+            : '資料只存在這台裝置的瀏覽器裡。換手機、清除瀏覽資料前，請先匯出備份。'}</p>
+        ${S.backend === 'sheet' ? '<p id="sheet-link"></p>' : ''}
+        <p>${S.all('beans').length} 支豆子 · ${S.all('brews').length} 筆記錄 · ${grinders.length} 台磨豆機</p>
+        <div class="actions">
+          <button class="btn primary" data-act="export">匯出備份 (JSON)</button>
+          <button class="btn" data-act="import-merge">匯入（合併）</button>
+          <button class="btn" data-act="import-replace">匯入（取代全部）</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </section>
+
+      <section class="card"><h2>其他</h2>
+        <div class="actions">
+          <button class="btn" data-act="sample">載入範例資料</button>
+          <button class="btn danger ghost" data-act="clear">清除所有資料</button>
+        </div>
+        <p class="muted small">研磨粒徑與各沖煮法範圍為常見參考值，不同豆子、烘焙度與器材都會影響，請以口感為準。</p>
+      </section>
+    </div>`);
+
+    if (S.backend === 'sheet') {
+      S.gas('getSheetUrl').then((url) => {
+        const el = $('#sheet-link', page);
+        if (el && url) el.innerHTML = `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">打開 Google 試算表</a>`;
+      }).catch(() => {});
+    }
+
+    let importMode = 'merge';
+    const file = $('#import-file', page);
+    file.addEventListener('change', async () => {
+      const f = file.files[0];
+      if (!f) return;
+      try {
+        const text = await f.text();
+        if (importMode === 'replace' && !await ask('會用備份檔取代目前所有資料，確定？', '取代', true)) return;
+        const n = await S.importJSON(text, importMode);
+        toast(`已匯入 ${n} 筆資料`);
+        renderSettings();
+      } catch (e) {
+        toast('匯入失敗：' + e.message);
+      } finally {
+        file.value = '';
+      }
+    });
+
+    page.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-act],[data-preset]');
+      if (!b) return;
+      if (b.dataset.preset) { addPreset(b.dataset.preset); renderSettings(); return; }
+      const act = b.dataset.act;
+      if (act === 'export') {
+        download(`coffee-log-${nowLocal().slice(0, 10)}.json`, S.exportJSON());
+      } else if (act === 'import-merge' || act === 'import-replace') {
+        importMode = act === 'import-merge' ? 'merge' : 'replace';
+        file.click();
+      } else if (act === 'sample') {
+        loadSample();
+        toast('已載入範例資料');
+        go('#/brews');
+      } else if (act === 'clear') {
+        if (await ask('確定清除所有豆子、記錄與磨豆機？此動作無法復原，建議先匯出備份。', '全部清除', true)) {
+          await S.clear();
+          renderSettings();
+        }
+      }
+    });
+  }
+
+  async function download(name, text) {
+    if (SHEET) return showText('備份內容（複製後存成 .json 檔）', text);
+    if (CLAUDE) {
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      if (!dl) return showText('備份內容（複製後存成 .json 檔）', text);
+      try {
+        await dl.save({ filename: name, data: text });
+      } catch (e) {
+        if (e && e.code !== 'declined') showText('備份內容（複製後存成 .json 檔）', text);
+      }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  function renderGrinderForm(id) {
+    const editing = id ? S.get('grinders', id) : null;
+    if (id && !editing) return notFound();
+    const g = editing ? clone(editing) : { unit: '格', precision: 1, zeroMicrons: 0 };
+
+    const page = mount(`<div class="page">
+      ${header(editing ? '編輯磨豆機' : '新增磨豆機', { back: '#/settings' })}
+      <form id="g-form" autocomplete="off">
+        <section class="card">
+          ${field('名稱 *', `<input name="name" required value="${esc(g.name)}" placeholder="例：Comandante C40">`)}
+          <div class="grid2">
+            ${field('刻度單位', `<input name="unit" value="${esc(unitOf(g))}" placeholder="格 / 圈 / 檔">`)}
+            ${field('刻度精度', `<select name="precision">${[[1, '整數'], [0.5, '0.5'], [0.1, '0.1']].map(([v, l]) => `<option value="${v}" ${+g.precision === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+            ${field('每格約幾 µm', `<input type="number" step="any" inputmode="decimal" name="micronsPerStep" value="${esc(g.micronsPerStep)}" placeholder="例：30">`)}
+            ${field('零點偏移 µm', `<input type="number" step="any" inputmode="decimal" name="zeroMicrons" value="${esc(g.zeroMicrons)}" placeholder="0">`)}
+          </div>
+          <p class="muted small">換算模型：粒徑 ≈ 零點偏移 + 每格 µm × 刻度。刻度請用「從歸零起算的總格數」。不知道每格微米可以先留空，一樣能記錄刻度，只是不能換算。</p>
+          ${field('備註', `<textarea name="notes" rows="2">${esc(g.notes)}</textarea>`)}
+          <div id="g-preview"></div>
+        </section>
+        <div class="form-actions">
+          ${editing ? '<button type="button" class="btn danger ghost" data-act="del">刪除</button>' : ''}
+          <a class="btn ghost" href="#/settings">取消</a>
+          <button class="btn primary" type="submit">儲存</button>
+        </div>
+      </form>
+    </div>`);
+
+    const form = $('#g-form', page);
+    function read() {
+      const fd = new FormData(form);
+      g.name = String(fd.get('name')).trim();
+      g.unit = String(fd.get('unit')).trim();
+      g.precision = C.num(fd.get('precision')) || 1;
+      g.micronsPerStep = C.num(fd.get('micronsPerStep'));
+      g.zeroMicrons = C.num(fd.get('zeroMicrons')) || 0;
+      g.notes = String(fd.get('notes'));
+    }
+    function preview() {
+      read();
+      const rows = C.grinderRangeTable(g);
+      $('#g-preview', page).innerHTML = rows.length
+        ? `<table class="table"><thead><tr><th>沖煮法</th><th class="r">建議刻度</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r.label}</td><td class="r mono">${r.from}–${r.to} ${esc(g.unit)}</td></tr>`).join('')}</tbody></table>`
+        : '';
+    }
+    form.addEventListener('input', preview);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      read();
+      S.upsert('grinders', g);
+      go('#/settings');
+    });
+    form.addEventListener('click', async (e) => {
+      if (!e.target.closest('[data-act="del"]')) return;
+      const used = S.all('brews').filter((b) => b.grinderId === id).length;
+      if (await ask(used ? `有 ${used} 筆記錄用到這台磨豆機，刪除後那些記錄只會保留刻度數字。確定刪除？` : '確定刪除這台磨豆機？', '刪除', true)) {
+        S.remove('grinders', id);
+        go('#/settings');
+      }
+    });
+    preview();
+  }
+
+  // ---------- 範例資料 ----------
+
+  function loadSample() {
+    const c40 = S.upsert('grinders', { name: 'Comandante C40 MK4', unit: '格', micronsPerStep: 30, zeroMicrons: 0, precision: 1, notes: '範例' });
+    S.upsert('grinders', { name: '1Zpresso JX-Pro', unit: '格', micronsPerStep: 12.5, zeroMicrons: 0, precision: 1, notes: '範例' });
+    const yirga = S.upsert('beans', {
+      name: '衣索比亞 耶加雪菲 G1（範例）', roaster: '範例烘豆坊', origin: '衣索比亞 耶加雪菲', variety: '原生種',
+      process: '水洗', roast: '淺焙', roastDate: dateOffset(-10), weight: 200, flavor: '茉莉花、檸檬、紅茶',
+    });
+    const brazil = S.upsert('beans', {
+      name: '巴西 喜拉朵（範例）', roaster: '範例烘豆坊', origin: '巴西 喜拉朵', process: '日曬', roast: '中深焙',
+      roastDate: dateOffset(-15), weight: 250, flavor: '堅果、可可、焦糖',
+    });
+    const day = (n, hm) => dateOffset(n) + 'T' + hm;
+    S.upsert('brews', {
+      method: 'pourover', date: day(-3, '08:20'), beanId: yirga.id, grinderId: c40.id, grindSetting: '26',
+      dose: 15, ratio: 16, water: 240, temp: 93, dripper: 'Hario V60 02', filter: '錐形', totalTime: '2:40',
+      stages: C.buildTemplate('three', 15, 240), rating: 3, acidity: 4, sweetness: 2, bitterness: 1, body: 2,
+      flavorNotes: '檸檬、花香', notes: '酸很明亮但甜感不夠，尾段偏薄', nextTime: '磨細 2 格，水溫維持 93°C',
+    });
+    S.upsert('brews', {
+      method: 'pourover', date: day(-1, '08:15'), beanId: yirga.id, grinderId: c40.id, grindSetting: '24',
+      dose: 15, ratio: 16, water: 240, temp: 93, dripper: 'Hario V60 02', filter: '錐形', totalTime: '2:55',
+      stages: C.buildTemplate('three', 15, 240), rating: 5, acidity: 4, sweetness: 4, bitterness: 1, body: 3,
+      flavorNotes: '茉莉花、檸檬紅茶、蜂蜜', notes: '甜感出來了，很乾淨', isBest: true,
+    });
+    S.upsert('brews', {
+      method: 'moka', date: day(0, '07:50'), beanId: brazil.id, grinderId: c40.id, grindSetting: '15',
+      dose: 16, ratio: 9.4, water: 150, dripper: 'Bialetti 3 杯份', waterStart: '熱水', heat: '中小火', flowStart: '1:50',
+      totalTime: '3:10', rating: 4, bitterness: 3, body: 4, sweetness: 3, flavorNotes: '可可、焦糖', nextTime: '流出變快時早點離火',
+    });
+  }
+
+  // ---------- 啟動 ----------
+
+  S.onError = toast;
+  if (EMBED) {
+    // 攔截站內連結，改用內部路由
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href^="#/"]');
+      if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      go(a.getAttribute('href'));
+    });
+  } else {
+    window.addEventListener('hashchange', route);
+  }
+  // 照片已刪除或讀不到時，直接不顯示
+  document.addEventListener('error', (e) => {
+    if (e.target instanceof HTMLImageElement && e.target.matches('.bean-photo, .thumb')) e.target.remove();
+  }, true);
+  view.innerHTML = '<p class="empty">載入中…</p>';
+  S.init().then(() => {
+    // 舊記錄的分段是「開始時間」，在記憶體裡轉成「結束秒數」；下次儲存時才寫回
+    S.all('brews').forEach((b) => { if (b.stages) b.stages = C.migrateStages(b.stages, b.totalTime); });
+    route();
+  });
+
+  if (!EMBED && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+
+</script>
+</body>
+</html>
