@@ -57,7 +57,7 @@
       ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
       ['rating', '評分', 'num'], ['acidity', '酸', 'num'], ['sweetness', '甜', 'num'], ['bitterness', '苦', 'num'],
       ['body', '醇厚', 'num'], ['flavorNotes', '風味描述'], ['notes', '心得'], ['nextTime', '下次調整'],
-      ['isBest', '最佳配方', 'bool'],
+      ['isBest', '最佳配方', 'bool'], ['recipeName', '參考配方'],
     ],
   };
 

@@ -365,6 +365,23 @@ input[type="range"] { padding: 0; border: 0; background: none; accent-color: var
 details.tpl { margin-top: 10px; }
 details.tpl summary { cursor: pointer; font-size: .88rem; color: var(--muted); padding: 4px 0; }
 details.tpl .chips { margin: 8px 0 0; }
+.recipe-picks { display: grid; gap: 6px; margin-top: 8px; }
+.recipe-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.recipe-pick:active { transform: scale(.99); }
+.recipe-pick:focus-visible { outline: 2px solid var(--accent); }
 
 .bean-photo {
   display: block;

@@ -276,6 +276,19 @@
     </a>`;
   }
 
+  function recipeLine(b) {
+    const r = b.recipeKey && C.MASTER_RECIPES.find((x) => x.key === b.recipeKey);
+    return r ? `<p class="muted small">參考配方：${esc(r.name)} · ${sourceLink(r)}</p>` : '';
+  }
+
+  function recipeMeta(r) {
+    return `${METHODS[r.method].label} · ${r.dose}g / ${r.water}g（1:${C.round(r.water / r.dose, 0.1)}）· ${r.temp}°C · 研磨${r.grind} · ${r.totalTime}`;
+  }
+
+  function sourceLink(r) {
+    return `<a href="${esc(r.source.url)}" target="_blank" rel="noopener">${esc(r.source.label)}</a>`;
+  }
+
   function stagesTable(stages) {
     if (!stages || !stages.length) return '';
     const cum = C.cumulative(stages);
@@ -386,7 +399,7 @@
       ${header(brewBeanName(b), { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
       <div class="row sub">${methodTag(b.method)}<span class="muted">${esc(fmtDate(b.date))}</span>${b.isBest ? '<span class="best">★ 最佳配方</span>' : ''}</div>
       <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></section>
-      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}</section>` : ''}
+      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}${recipeLine(b)}</section>` : ''}
       <section class="card"><h2>風味</h2>
         <div class="big-stars">${stars(b.rating)}</div>
         ${tasteBars ? `<div class="bars">${tasteBars}</div>` : ''}
@@ -476,6 +489,7 @@
       updateBeanHint();
       updateGrindHint();
       updateRatioHint();
+      updateRecipeHint();
     }
 
     function formHtml() {
@@ -529,8 +543,12 @@
             <div id="stages"></div>
             <button type="button" class="btn ghost block" data-act="add-stage">＋ 手動新增</button>
             <div id="stage-sum" class="hint"></div>
-            <details class="tpl"><summary>套用範本</summary>
-              <div class="chips">${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
+            <div id="recipe-hint" class="hint"></div>
+            <details class="tpl"><summary>套用範本（大師配方 / 通用）</summary>
+              <div class="recipe-picks">${C.MASTER_RECIPES.map((r) => `<button type="button" class="recipe-pick" data-act="master" data-k="${r.key}">
+                <strong>${esc(r.name)}</strong><span class="muted small">${esc(recipeMeta(r))}</span></button>`).join('')}</div>
+              <p class="muted small">套用後依你的粉量等比例換算水量，時間點照原配方。</p>
+              <div class="chips"><span class="muted small">通用：</span>${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
             </details>
           </section>` : ''}
 
@@ -646,6 +664,15 @@
       el.innerHTML = html;
     }
 
+    function updateRecipeHint() {
+      const el = $('#recipe-hint', page);
+      if (!el) return;
+      const r = C.MASTER_RECIPES.find((x) => x.key === d.recipeKey);
+      el.innerHTML = r
+        ? `<div>參考 <b>${esc(r.name)}</b>（原配方 ${r.dose}g / ${r.water}g，研磨${esc(r.grind)}）· ${sourceLink(r)}</div>${r.note ? `<div>${esc(r.note)}</div>` : ''}`
+        : '';
+    }
+
     function updateRatioHint() {
       const el = $('#ratio-hint', page);
       if (d.method === 'espresso') {
@@ -753,14 +780,26 @@
       const b = e.target.closest('[data-act]');
       if (!b) return;
       const act = b.dataset.act;
-      if (act === 'tpl') {
+      if (act === 'master') {
+        const r = C.MASTER_RECIPES.find((x) => x.key === b.dataset.k);
+        const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
+        if (filled && !await ask(`以「${r.name}」取代目前的分段與比例？`, '套用')) return;
+        const a = C.applyMasterRecipe(r.key, d.dose);
+        if (d.dripper) delete a.dripper;
+        Object.assign(d, a);
+        draw();
+        toast(`已套用 ${r.name}`);
+      } else if (act === 'tpl') {
         const t = C.POUR_TEMPLATES[b.dataset.k];
         const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
         if (filled && !await ask(`以「${t.label}」取代目前的分段？`, '取代')) return;
         const built = C.buildTemplate(b.dataset.k, d.dose, d.water);
         if (!built.length) return toast('請先填粉量與水量');
         d.stages = built;
+        delete d.recipeKey;
+        delete d.recipeName;
         renderStages();
+        updateRecipeHint();
       } else if (act === 'add-stage') {
         d.stages.push(blankStage());
         renderStages();
@@ -1171,7 +1210,8 @@
   function renderTimer(id) {
     if (!id) return renderTimerPicker();
     const free = id === 'free';
-    const brew = free ? null : S.get('brews', id);
+    const recipe = id.startsWith('r-') ? C.applyMasterRecipe(id.slice(2)) : null;
+    const brew = free ? null : recipe ? Object.assign({ beanName: recipe.recipeName }, recipe) : S.get('brews', id);
     if (!free && !brew) return notFound();
 
     // 每段的秒數是「這段結束」的時間
@@ -1180,7 +1220,7 @@
     const target = brew ? C.parseTime(brew.totalTime) : null;
 
     const page = mount(`<div class="page timer-page">
-      ${header('計時沖煮', { back: brew ? '#/brew/' + id : '#/timer' })}
+      ${header('計時沖煮', { back: recipe ? '#/tools?t=recipes' : brew ? '#/brew/' + id : '#/timer' })}
       <section class="card center">
         <div class="muted">${brew ? esc(brewBeanName(brew)) + ' · ' + esc(summary(brew)) : '自由計時：每段注水結束時按「這段結束」'}</div>
         <div id="clock" class="clock">0:00</div>
@@ -1336,7 +1376,10 @@
     $('#finish', page).addEventListener('click', () => {
       const t = Math.round(elapsed());
       pause();
-      if (brew) {
+      if (recipe) {
+        pending = Object.assign({}, recipe, { totalTime: t ? C.formatTime(t) : recipe.totalTime });
+        go('#/brew/new?pending=1');
+      } else if (brew) {
         go(`#/brew/new?from=${id}${t ? '&time=' + t : ''}`);
       } else {
         pending = {
@@ -1358,7 +1401,8 @@
     const recent = brews.filter((b) => !b.isBest).slice(0, 8);
     mount(`<div class="page">
       ${header('計時沖煮')}
-      <a class="card link-card" href="#/timer/free"><strong>自由計時</strong><div class="muted small">邊沖邊按「分段」，結束後自動帶入記錄的分段時間</div></a>
+      <a class="card link-card" href="#/timer/free"><strong>自由計時</strong><div class="muted small">每段注完水按「這段結束」，結束後自動帶入各段秒數</div></a>
+      <a class="card link-card" href="#/tools?t=recipes"><strong>跟著大師配方沖</strong><div class="muted small">Hoffmann、粕谷哲 4:6 等公開配方</div></a>
       ${best.length ? `<h2 class="section-title">★ 最佳配方</h2><div class="list">${best.map((b) => brewCard(b).replace('#/brew/', '#/timer/')).join('')}</div>` : ''}
       ${recent.length ? `<h2 class="section-title">最近的記錄</h2><div class="list">${recent.map((b) => brewCard(b).replace('#/brew/', '#/timer/')).join('')}</div>` : ''}
       ${!brews.length ? '<p class="empty">存了記錄之後，就能在這裡跟著分段時間與水量計時沖煮。</p>' : ''}
@@ -1369,7 +1413,7 @@
 
   function renderTools(q) {
     const t = q.get('t') || 'ratio';
-    const tabs = [['ratio', '水粉比'], ['scale', '配方縮放'], ['grind', '研磨換算']];
+    const tabs = [['recipes', '配方庫'], ['ratio', '水粉比'], ['scale', '配方縮放'], ['grind', '研磨換算']];
     const page = mount(`<div class="page">
       ${header('工具')}
       <div class="seg tabs">${tabs.map(([k, l]) => `<a class="${t === k ? 'on' : ''}" href="#/tools?t=${k}">${l}</a>`).join('')}</div>
@@ -1378,7 +1422,29 @@
     const el = $('#tool', page);
     if (t === 'scale') scaleTool(el);
     else if (t === 'grind') grindTool(el);
+    else if (t === 'recipes') recipeLibrary(el);
     else ratioTool(el);
+  }
+
+  function recipeLibrary(el) {
+    el.innerHTML = `<p class="muted small">公開的大師配方。計時都從第一次注水開始；「結束」是該段結束、下一段開始的時間。新增記錄時會依你的粉量等比例換算水量。</p>
+      ${C.MASTER_RECIPES.map((r) => `<section class="card">
+        <div class="card-head"><h2>${esc(r.name)}</h2>${methodTag(r.method)}</div>
+        <div class="meta">${esc(recipeMeta(r))}</div>
+        ${stagesTable(r.stages)}
+        ${r.note ? `<p class="small">${esc(r.note)}</p>` : ''}
+        <p class="muted small">來源：${sourceLink(r)}</p>
+        <div class="actions">
+          <a class="btn primary small" href="#/timer/r-${r.key}">⏱ 跟著計時</a>
+          <button type="button" class="btn small" data-use="${r.key}">用這個配方新增記錄</button>
+        </div>
+      </section>`).join('')}`;
+    el.onclick = (e) => {
+      const b = e.target.closest('[data-use]');
+      if (!b) return;
+      pending = C.applyMasterRecipe(b.dataset.use);
+      go('#/brew/new?pending=1');
+    };
   }
 
   function ratioTool(el) {

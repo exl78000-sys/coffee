@@ -47,6 +47,29 @@ test('沖煮範本總水量正確', () => {
   assert.equal(C.buildTemplate('three', 15, 240)[0].end, 40);
 });
 
+test('大師配方資料一致：分段合計等於總水量、結束時間遞增', () => {
+  assert.ok(C.MASTER_RECIPES.length >= 5);
+  for (const r of C.MASTER_RECIPES) {
+    assert.equal(C.stagesTotal(r.stages), r.water, r.key);
+    const ends = r.stages.map((s) => s.end);
+    assert.ok(ends.every((e, i) => i === 0 || e > ends[i - 1]), r.key);
+    assert.ok(r.source && r.source.url.startsWith('https://'), r.key);
+    assert.ok(['pourover', 'immersion'].includes(r.method), r.key);
+  }
+});
+
+test('大師配方依粉量換算，時間點不變', () => {
+  const a = C.applyMasterRecipe('kasuya-46', 15);
+  assert.equal(a.water, 225);
+  assert.equal(a.ratio, 15);
+  assert.equal(C.stagesTotal(a.stages), 225);
+  assert.deepEqual(a.stages.map((s) => s.end), [45, 90, 135, 180, 210]);
+  const orig = C.applyMasterRecipe('hoffmann-v60');
+  assert.equal(orig.dose, 30);
+  assert.deepEqual(orig.stages.map((s) => s.amount), [60, 240, 200, 0]);
+  assert.equal(C.applyMasterRecipe('nope', 15), null);
+});
+
 test('計時器段落判斷（秒數為每段結束時間）', () => {
   const stages = [{ end: 40 }, { end: '1:20' }, { end: 120 }];
   assert.equal(C.stageIndexAt(stages, 0), 0);

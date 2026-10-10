@@ -373,6 +373,23 @@ input[type="range"] { padding: 0; border: 0; background: none; accent-color: var
 details.tpl { margin-top: 10px; }
 details.tpl summary { cursor: pointer; font-size: .88rem; color: var(--muted); padding: 4px 0; }
 details.tpl .chips { margin: 8px 0 0; }
+.recipe-picks { display: grid; gap: 6px; margin-top: 8px; }
+.recipe-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.recipe-pick:active { transform: scale(.99); }
+.recipe-pick:focus-visible { outline: 2px solid var(--accent); }
 
 .bean-photo {
   display: block;
@@ -752,19 +769,6 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
         ];
       },
     },
-    four6: {
-      label: '4:6 法',
-      build(dose, water) {
-        const p = Math.round(water * 0.2);
-        return [
-          { label: '第 1 注', end: 45, amount: p, technique: '前 40% 調整酸甜' },
-          { label: '第 2 注', end: 90, amount: p, technique: '' },
-          { label: '第 3 注', end: 130, amount: p, technique: '後 60% 調整濃度' },
-          { label: '第 4 注', end: 160, amount: p, technique: '' },
-          { label: '第 5 注', end: 210, amount: water - p * 4, technique: '' },
-        ];
-      },
-    },
     single: {
       label: '一刀流',
       build(dose, water) {
@@ -791,6 +795,122 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     dose = num(dose); water = num(water);
     if (!t || !dose || !water) return [];
     return t.build(dose, Math.round(water));
+  }
+
+  /*
+   * 大師／網路公開配方。數字取自原始來源或其整理（見 source），
+   * 每段的 end 是該段結束（下一段開始）的秒數，計時從第一次注水開始。
+   */
+  const MASTER_RECIPES = [
+    {
+      key: 'hoffmann-v60',
+      name: 'James Hoffmann 終極 V60',
+      method: 'pourover', dose: 30, water: 500, temp: 97, totalTime: '3:30',
+      grind: '中細', dripper: 'Hario V60 02',
+      note: '大份量（2 杯）配方；淺焙可以用更燙的水。',
+      source: { label: 'Hario USA', url: 'https://www.hario-usa.com/blogs/recipes-and-more-from-friends/james-hoffmann-uitimate-v60-technique' },
+      stages: [
+        { label: '悶蒸', amount: 60, end: 45, technique: '注入 2 倍粉量的水，搖晃濾杯讓粉全部濕透' },
+        { label: '第一次主注水', amount: 240, end: 75, technique: '30 秒內注到 300g（總水量 60%）' },
+        { label: '第二次主注水', amount: 200, end: 105, technique: '30 秒內注到 500g，輕攪一下再搖晃整平粉床' },
+        { label: '滴濾', amount: 0, end: 210, technique: '等待滴濾，目標 3:30 前滴完' },
+      ],
+    },
+    {
+      key: 'hoffmann-1cup',
+      name: 'James Hoffmann 單杯 V60',
+      method: 'pourover', dose: 15, water: 250, temp: 96, totalTime: '3:00',
+      grind: '中細', dripper: 'Hario V60 01/02',
+      note: '每次注 50g，注 10 秒停 10 秒；淺焙可用 100°C，深焙降到 90°C 左右。',
+      source: { label: 'Hario USA', url: 'https://www.hario-usa.com/blogs/recipes-and-more-from-friends/james-hoffmann-1-cup-v60-technique' },
+      stages: [
+        { label: '悶蒸', amount: 50, end: 45, technique: '慢慢注入 50g，0:10–0:15 輕搖濾杯，靜置到 0:45' },
+        { label: '第 2 注', amount: 50, end: 70, technique: '1:00 前注到 100g，停到 1:10' },
+        { label: '第 3 注', amount: 50, end: 90, technique: '1:20 前注到 150g，停到 1:30' },
+        { label: '第 4 注', amount: 50, end: 110, technique: '1:40 前注到 200g，停到 1:50' },
+        { label: '第 5 注', amount: 50, end: 125, technique: '2:00 前注到 250g，輕搖濾杯整平' },
+        { label: '滴濾', amount: 0, end: 180, technique: '等待滴濾，約 3:00 滴完' },
+      ],
+    },
+    {
+      key: 'kasuya-46',
+      name: '粕谷哲 4:6 法',
+      method: 'pourover', dose: 20, water: 300, temp: 92, totalTime: '3:30',
+      grind: '粗', dripper: 'Hario V60 02',
+      note: '前 40% 調酸甜：第一注少偏甜、多偏酸；後 60% 調濃淡：分越多次越濃。',
+      source: { label: 'Hario Europe', url: 'https://www.hario-europe.com/blogs/hario-community/v60-ambassadors-tetsu-kasuya' },
+      stages: [
+        { label: '第 1 注', amount: 50, end: 45, technique: '前 40%：這注少偏甜、多偏酸' },
+        { label: '第 2 注', amount: 70, end: 90, technique: '補滿前 40%（120g）' },
+        { label: '第 3 注', amount: 60, end: 135, technique: '後 60% 分三次，調整濃度' },
+        { label: '第 4 注', amount: 60, end: 180 },
+        { label: '第 5 注', amount: 60, end: 210, technique: '3:30 移開濾杯' },
+      ],
+    },
+    {
+      key: 'origin-v60',
+      name: 'Origin Coffee V60',
+      method: 'pourover', dose: 15, water: 250, temp: 95, totalTime: '3:15',
+      grind: '中', dripper: 'Hario V60 02',
+      note: '水溫 93–96°C；滴太慢就磨粗、太快就磨細。',
+      source: { label: 'Origin Coffee', url: 'https://www.origincoffee.co.uk/blogs/journal/brewing-at-home-v60' },
+      stages: [
+        { label: '悶蒸', amount: 45, end: 30, technique: '繞圈注水，0:30 前注完' },
+        { label: '第 2 注', amount: 55, end: 60, technique: '注到 100g' },
+        { label: '第 3 注', amount: 50, end: 90, technique: '注到 150g' },
+        { label: '第 4 注', amount: 100, end: 195, technique: '注到 250g 後等待滴濾，約 3:00–3:30 完成' },
+      ],
+    },
+    {
+      key: 'hoffmann-aeropress',
+      name: 'James Hoffmann 愛樂壓',
+      method: 'immersion', dose: 11, water: 200, temp: 99, totalTime: '3:00',
+      grind: '中細', dripper: '愛樂壓（正放、濾紙）',
+      note: '不用預熱或洗濾紙；用搖晃代替攪拌，最後輕壓。',
+      source: { label: 'AeroPrecipe 整理', url: 'https://aeroprecipe.com/recipes/james-hoffmann-aeropress-recipe' },
+      stages: [
+        { label: '注水', amount: 200, end: 120, technique: '一次注入 200g，立刻插上活塞防止滴漏，靜置' },
+        { label: '搖晃', amount: 0, end: 150, technique: '輕輕搖晃，再靜置 30 秒' },
+        { label: '下壓', amount: 0, end: 180, technique: '輕輕壓到底' },
+      ],
+    },
+    {
+      key: 'hoffmann-frenchpress',
+      name: 'James Hoffmann 法壓壺',
+      method: 'immersion', dose: 30, water: 500, temp: 93, totalTime: '9:30',
+      grind: '粗', dripper: '法壓壺',
+      note: '等越久越乾淨；倒出時活塞只當濾網，不要壓到底。',
+      source: { label: 'LAMOSE 整理', url: 'https://lamose.com/blogs/recipes/james-hoffmanns-french-press-method-the-better-way' },
+      stages: [
+        { label: '注水浸泡', amount: 500, end: 240, technique: '注入全部熱水，靜置 4 分鐘' },
+        { label: '破渣撈沫', amount: 0, end: 270, technique: '攪開表面粉層，撈掉浮沫' },
+        { label: '靜置沉澱', amount: 0, end: 540, technique: '再等 5 分鐘以上讓細粉沉底' },
+        { label: '倒出', amount: 0, end: 570, technique: '活塞只壓到液面，慢慢倒出' },
+      ],
+    },
+  ];
+
+  /**
+   * 依使用者的粉量套用大師配方：保留原配方的水粉比與時間點，水量等比例換算。
+   * 沒填粉量就用原配方份量。
+   */
+  function applyMasterRecipe(key, dose) {
+    const r = MASTER_RECIPES.find((x) => x.key === key);
+    if (!r) return null;
+    dose = num(dose) || r.dose;
+    const water = Math.round(dose * r.water / r.dose);
+    return {
+      method: r.method,
+      dose,
+      ratio: round(r.water / r.dose, 0.1),
+      water,
+      temp: r.temp,
+      dripper: r.dripper,
+      totalTime: r.totalTime,
+      recipeKey: r.key,
+      recipeName: r.name,
+      stages: scaleStages(r.stages, water),
+    };
   }
 
   // ---------- 研磨刻度 ----------
@@ -884,6 +1004,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     num, round, parseTime, formatTime,
     waterFromDose, doseFromWater, ratioOf, estimatedBeverage,
     stagesTotal, cumulative, scaleStages, stageEnd, stageIndexAt, migrateStages, POUR_TEMPLATES, buildTemplate,
+    MASTER_RECIPES, applyMasterRecipe,
     METHOD_RANGES, GRINDER_PRESETS, canConvert, grinderMicrons, grinderSetting,
     convertGrind, calibrateZero, methodsForMicrons, grinderRangeTable,
     restDays,
@@ -951,7 +1072,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
       ['rating', '評分', 'num'], ['acidity', '酸', 'num'], ['sweetness', '甜', 'num'], ['bitterness', '苦', 'num'],
       ['body', '醇厚', 'num'], ['flavorNotes', '風味描述'], ['notes', '心得'], ['nextTime', '下次調整'],
-      ['isBest', '最佳配方', 'bool'],
+      ['isBest', '最佳配方', 'bool'], ['recipeName', '參考配方'],
     ],
   };
 
@@ -1548,6 +1669,19 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     </a>`;
   }
 
+  function recipeLine(b) {
+    const r = b.recipeKey && C.MASTER_RECIPES.find((x) => x.key === b.recipeKey);
+    return r ? `<p class="muted small">參考配方：${esc(r.name)} · ${sourceLink(r)}</p>` : '';
+  }
+
+  function recipeMeta(r) {
+    return `${METHODS[r.method].label} · ${r.dose}g / ${r.water}g（1:${C.round(r.water / r.dose, 0.1)}）· ${r.temp}°C · 研磨${r.grind} · ${r.totalTime}`;
+  }
+
+  function sourceLink(r) {
+    return `<a href="${esc(r.source.url)}" target="_blank" rel="noopener">${esc(r.source.label)}</a>`;
+  }
+
   function stagesTable(stages) {
     if (!stages || !stages.length) return '';
     const cum = C.cumulative(stages);
@@ -1658,7 +1792,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       ${header(brewBeanName(b), { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
       <div class="row sub">${methodTag(b.method)}<span class="muted">${esc(fmtDate(b.date))}</span>${b.isBest ? '<span class="best">★ 最佳配方</span>' : ''}</div>
       <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></section>
-      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}</section>` : ''}
+      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}${recipeLine(b)}</section>` : ''}
       <section class="card"><h2>風味</h2>
         <div class="big-stars">${stars(b.rating)}</div>
         ${tasteBars ? `<div class="bars">${tasteBars}</div>` : ''}
@@ -1748,6 +1882,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       updateBeanHint();
       updateGrindHint();
       updateRatioHint();
+      updateRecipeHint();
     }
 
     function formHtml() {
@@ -1801,8 +1936,12 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
             <div id="stages"></div>
             <button type="button" class="btn ghost block" data-act="add-stage">＋ 手動新增</button>
             <div id="stage-sum" class="hint"></div>
-            <details class="tpl"><summary>套用範本</summary>
-              <div class="chips">${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
+            <div id="recipe-hint" class="hint"></div>
+            <details class="tpl"><summary>套用範本（大師配方 / 通用）</summary>
+              <div class="recipe-picks">${C.MASTER_RECIPES.map((r) => `<button type="button" class="recipe-pick" data-act="master" data-k="${r.key}">
+                <strong>${esc(r.name)}</strong><span class="muted small">${esc(recipeMeta(r))}</span></button>`).join('')}</div>
+              <p class="muted small">套用後依你的粉量等比例換算水量，時間點照原配方。</p>
+              <div class="chips"><span class="muted small">通用：</span>${Object.entries(C.POUR_TEMPLATES).map(([k, t]) => `<button type="button" class="chip" data-act="tpl" data-k="${k}">${t.label}</button>`).join('')}</div>
             </details>
           </section>` : ''}
 
@@ -1918,6 +2057,15 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       el.innerHTML = html;
     }
 
+    function updateRecipeHint() {
+      const el = $('#recipe-hint', page);
+      if (!el) return;
+      const r = C.MASTER_RECIPES.find((x) => x.key === d.recipeKey);
+      el.innerHTML = r
+        ? `<div>參考 <b>${esc(r.name)}</b>（原配方 ${r.dose}g / ${r.water}g，研磨${esc(r.grind)}）· ${sourceLink(r)}</div>${r.note ? `<div>${esc(r.note)}</div>` : ''}`
+        : '';
+    }
+
     function updateRatioHint() {
       const el = $('#ratio-hint', page);
       if (d.method === 'espresso') {
@@ -2025,14 +2173,26 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       const b = e.target.closest('[data-act]');
       if (!b) return;
       const act = b.dataset.act;
-      if (act === 'tpl') {
+      if (act === 'master') {
+        const r = C.MASTER_RECIPES.find((x) => x.key === b.dataset.k);
+        const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
+        if (filled && !await ask(`以「${r.name}」取代目前的分段與比例？`, '套用')) return;
+        const a = C.applyMasterRecipe(r.key, d.dose);
+        if (d.dripper) delete a.dripper;
+        Object.assign(d, a);
+        draw();
+        toast(`已套用 ${r.name}`);
+      } else if (act === 'tpl') {
         const t = C.POUR_TEMPLATES[b.dataset.k];
         const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
         if (filled && !await ask(`以「${t.label}」取代目前的分段？`, '取代')) return;
         const built = C.buildTemplate(b.dataset.k, d.dose, d.water);
         if (!built.length) return toast('請先填粉量與水量');
         d.stages = built;
+        delete d.recipeKey;
+        delete d.recipeName;
         renderStages();
+        updateRecipeHint();
       } else if (act === 'add-stage') {
         d.stages.push(blankStage());
         renderStages();
@@ -2443,7 +2603,8 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
   function renderTimer(id) {
     if (!id) return renderTimerPicker();
     const free = id === 'free';
-    const brew = free ? null : S.get('brews', id);
+    const recipe = id.startsWith('r-') ? C.applyMasterRecipe(id.slice(2)) : null;
+    const brew = free ? null : recipe ? Object.assign({ beanName: recipe.recipeName }, recipe) : S.get('brews', id);
     if (!free && !brew) return notFound();
 
     // 每段的秒數是「這段結束」的時間
@@ -2452,7 +2613,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     const target = brew ? C.parseTime(brew.totalTime) : null;
 
     const page = mount(`<div class="page timer-page">
-      ${header('計時沖煮', { back: brew ? '#/brew/' + id : '#/timer' })}
+      ${header('計時沖煮', { back: recipe ? '#/tools?t=recipes' : brew ? '#/brew/' + id : '#/timer' })}
       <section class="card center">
         <div class="muted">${brew ? esc(brewBeanName(brew)) + ' · ' + esc(summary(brew)) : '自由計時：每段注水結束時按「這段結束」'}</div>
         <div id="clock" class="clock">0:00</div>
@@ -2608,7 +2769,10 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     $('#finish', page).addEventListener('click', () => {
       const t = Math.round(elapsed());
       pause();
-      if (brew) {
+      if (recipe) {
+        pending = Object.assign({}, recipe, { totalTime: t ? C.formatTime(t) : recipe.totalTime });
+        go('#/brew/new?pending=1');
+      } else if (brew) {
         go(`#/brew/new?from=${id}${t ? '&time=' + t : ''}`);
       } else {
         pending = {
@@ -2630,7 +2794,8 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     const recent = brews.filter((b) => !b.isBest).slice(0, 8);
     mount(`<div class="page">
       ${header('計時沖煮')}
-      <a class="card link-card" href="#/timer/free"><strong>自由計時</strong><div class="muted small">邊沖邊按「分段」，結束後自動帶入記錄的分段時間</div></a>
+      <a class="card link-card" href="#/timer/free"><strong>自由計時</strong><div class="muted small">每段注完水按「這段結束」，結束後自動帶入各段秒數</div></a>
+      <a class="card link-card" href="#/tools?t=recipes"><strong>跟著大師配方沖</strong><div class="muted small">Hoffmann、粕谷哲 4:6 等公開配方</div></a>
       ${best.length ? `<h2 class="section-title">★ 最佳配方</h2><div class="list">${best.map((b) => brewCard(b).replace('#/brew/', '#/timer/')).join('')}</div>` : ''}
       ${recent.length ? `<h2 class="section-title">最近的記錄</h2><div class="list">${recent.map((b) => brewCard(b).replace('#/brew/', '#/timer/')).join('')}</div>` : ''}
       ${!brews.length ? '<p class="empty">存了記錄之後，就能在這裡跟著分段時間與水量計時沖煮。</p>' : ''}
@@ -2641,7 +2806,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
 
   function renderTools(q) {
     const t = q.get('t') || 'ratio';
-    const tabs = [['ratio', '水粉比'], ['scale', '配方縮放'], ['grind', '研磨換算']];
+    const tabs = [['recipes', '配方庫'], ['ratio', '水粉比'], ['scale', '配方縮放'], ['grind', '研磨換算']];
     const page = mount(`<div class="page">
       ${header('工具')}
       <div class="seg tabs">${tabs.map(([k, l]) => `<a class="${t === k ? 'on' : ''}" href="#/tools?t=${k}">${l}</a>`).join('')}</div>
@@ -2650,7 +2815,29 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     const el = $('#tool', page);
     if (t === 'scale') scaleTool(el);
     else if (t === 'grind') grindTool(el);
+    else if (t === 'recipes') recipeLibrary(el);
     else ratioTool(el);
+  }
+
+  function recipeLibrary(el) {
+    el.innerHTML = `<p class="muted small">公開的大師配方。計時都從第一次注水開始；「結束」是該段結束、下一段開始的時間。新增記錄時會依你的粉量等比例換算水量。</p>
+      ${C.MASTER_RECIPES.map((r) => `<section class="card">
+        <div class="card-head"><h2>${esc(r.name)}</h2>${methodTag(r.method)}</div>
+        <div class="meta">${esc(recipeMeta(r))}</div>
+        ${stagesTable(r.stages)}
+        ${r.note ? `<p class="small">${esc(r.note)}</p>` : ''}
+        <p class="muted small">來源：${sourceLink(r)}</p>
+        <div class="actions">
+          <a class="btn primary small" href="#/timer/r-${r.key}">⏱ 跟著計時</a>
+          <button type="button" class="btn small" data-use="${r.key}">用這個配方新增記錄</button>
+        </div>
+      </section>`).join('')}`;
+    el.onclick = (e) => {
+      const b = e.target.closest('[data-use]');
+      if (!b) return;
+      pending = C.applyMasterRecipe(b.dataset.use);
+      go('#/brew/new?pending=1');
+    };
   }
 
   function ratioTool(el) {

@@ -163,19 +163,6 @@
         ];
       },
     },
-    four6: {
-      label: '4:6 法',
-      build(dose, water) {
-        const p = Math.round(water * 0.2);
-        return [
-          { label: '第 1 注', end: 45, amount: p, technique: '前 40% 調整酸甜' },
-          { label: '第 2 注', end: 90, amount: p, technique: '' },
-          { label: '第 3 注', end: 130, amount: p, technique: '後 60% 調整濃度' },
-          { label: '第 4 注', end: 160, amount: p, technique: '' },
-          { label: '第 5 注', end: 210, amount: water - p * 4, technique: '' },
-        ];
-      },
-    },
     single: {
       label: '一刀流',
       build(dose, water) {
@@ -202,6 +189,122 @@
     dose = num(dose); water = num(water);
     if (!t || !dose || !water) return [];
     return t.build(dose, Math.round(water));
+  }
+
+  /*
+   * 大師／網路公開配方。數字取自原始來源或其整理（見 source），
+   * 每段的 end 是該段結束（下一段開始）的秒數，計時從第一次注水開始。
+   */
+  const MASTER_RECIPES = [
+    {
+      key: 'hoffmann-v60',
+      name: 'James Hoffmann 終極 V60',
+      method: 'pourover', dose: 30, water: 500, temp: 97, totalTime: '3:30',
+      grind: '中細', dripper: 'Hario V60 02',
+      note: '大份量（2 杯）配方；淺焙可以用更燙的水。',
+      source: { label: 'Hario USA', url: 'https://www.hario-usa.com/blogs/recipes-and-more-from-friends/james-hoffmann-uitimate-v60-technique' },
+      stages: [
+        { label: '悶蒸', amount: 60, end: 45, technique: '注入 2 倍粉量的水，搖晃濾杯讓粉全部濕透' },
+        { label: '第一次主注水', amount: 240, end: 75, technique: '30 秒內注到 300g（總水量 60%）' },
+        { label: '第二次主注水', amount: 200, end: 105, technique: '30 秒內注到 500g，輕攪一下再搖晃整平粉床' },
+        { label: '滴濾', amount: 0, end: 210, technique: '等待滴濾，目標 3:30 前滴完' },
+      ],
+    },
+    {
+      key: 'hoffmann-1cup',
+      name: 'James Hoffmann 單杯 V60',
+      method: 'pourover', dose: 15, water: 250, temp: 96, totalTime: '3:00',
+      grind: '中細', dripper: 'Hario V60 01/02',
+      note: '每次注 50g，注 10 秒停 10 秒；淺焙可用 100°C，深焙降到 90°C 左右。',
+      source: { label: 'Hario USA', url: 'https://www.hario-usa.com/blogs/recipes-and-more-from-friends/james-hoffmann-1-cup-v60-technique' },
+      stages: [
+        { label: '悶蒸', amount: 50, end: 45, technique: '慢慢注入 50g，0:10–0:15 輕搖濾杯，靜置到 0:45' },
+        { label: '第 2 注', amount: 50, end: 70, technique: '1:00 前注到 100g，停到 1:10' },
+        { label: '第 3 注', amount: 50, end: 90, technique: '1:20 前注到 150g，停到 1:30' },
+        { label: '第 4 注', amount: 50, end: 110, technique: '1:40 前注到 200g，停到 1:50' },
+        { label: '第 5 注', amount: 50, end: 125, technique: '2:00 前注到 250g，輕搖濾杯整平' },
+        { label: '滴濾', amount: 0, end: 180, technique: '等待滴濾，約 3:00 滴完' },
+      ],
+    },
+    {
+      key: 'kasuya-46',
+      name: '粕谷哲 4:6 法',
+      method: 'pourover', dose: 20, water: 300, temp: 92, totalTime: '3:30',
+      grind: '粗', dripper: 'Hario V60 02',
+      note: '前 40% 調酸甜：第一注少偏甜、多偏酸；後 60% 調濃淡：分越多次越濃。',
+      source: { label: 'Hario Europe', url: 'https://www.hario-europe.com/blogs/hario-community/v60-ambassadors-tetsu-kasuya' },
+      stages: [
+        { label: '第 1 注', amount: 50, end: 45, technique: '前 40%：這注少偏甜、多偏酸' },
+        { label: '第 2 注', amount: 70, end: 90, technique: '補滿前 40%（120g）' },
+        { label: '第 3 注', amount: 60, end: 135, technique: '後 60% 分三次，調整濃度' },
+        { label: '第 4 注', amount: 60, end: 180 },
+        { label: '第 5 注', amount: 60, end: 210, technique: '3:30 移開濾杯' },
+      ],
+    },
+    {
+      key: 'origin-v60',
+      name: 'Origin Coffee V60',
+      method: 'pourover', dose: 15, water: 250, temp: 95, totalTime: '3:15',
+      grind: '中', dripper: 'Hario V60 02',
+      note: '水溫 93–96°C；滴太慢就磨粗、太快就磨細。',
+      source: { label: 'Origin Coffee', url: 'https://www.origincoffee.co.uk/blogs/journal/brewing-at-home-v60' },
+      stages: [
+        { label: '悶蒸', amount: 45, end: 30, technique: '繞圈注水，0:30 前注完' },
+        { label: '第 2 注', amount: 55, end: 60, technique: '注到 100g' },
+        { label: '第 3 注', amount: 50, end: 90, technique: '注到 150g' },
+        { label: '第 4 注', amount: 100, end: 195, technique: '注到 250g 後等待滴濾，約 3:00–3:30 完成' },
+      ],
+    },
+    {
+      key: 'hoffmann-aeropress',
+      name: 'James Hoffmann 愛樂壓',
+      method: 'immersion', dose: 11, water: 200, temp: 99, totalTime: '3:00',
+      grind: '中細', dripper: '愛樂壓（正放、濾紙）',
+      note: '不用預熱或洗濾紙；用搖晃代替攪拌，最後輕壓。',
+      source: { label: 'AeroPrecipe 整理', url: 'https://aeroprecipe.com/recipes/james-hoffmann-aeropress-recipe' },
+      stages: [
+        { label: '注水', amount: 200, end: 120, technique: '一次注入 200g，立刻插上活塞防止滴漏，靜置' },
+        { label: '搖晃', amount: 0, end: 150, technique: '輕輕搖晃，再靜置 30 秒' },
+        { label: '下壓', amount: 0, end: 180, technique: '輕輕壓到底' },
+      ],
+    },
+    {
+      key: 'hoffmann-frenchpress',
+      name: 'James Hoffmann 法壓壺',
+      method: 'immersion', dose: 30, water: 500, temp: 93, totalTime: '9:30',
+      grind: '粗', dripper: '法壓壺',
+      note: '等越久越乾淨；倒出時活塞只當濾網，不要壓到底。',
+      source: { label: 'LAMOSE 整理', url: 'https://lamose.com/blogs/recipes/james-hoffmanns-french-press-method-the-better-way' },
+      stages: [
+        { label: '注水浸泡', amount: 500, end: 240, technique: '注入全部熱水，靜置 4 分鐘' },
+        { label: '破渣撈沫', amount: 0, end: 270, technique: '攪開表面粉層，撈掉浮沫' },
+        { label: '靜置沉澱', amount: 0, end: 540, technique: '再等 5 分鐘以上讓細粉沉底' },
+        { label: '倒出', amount: 0, end: 570, technique: '活塞只壓到液面，慢慢倒出' },
+      ],
+    },
+  ];
+
+  /**
+   * 依使用者的粉量套用大師配方：保留原配方的水粉比與時間點，水量等比例換算。
+   * 沒填粉量就用原配方份量。
+   */
+  function applyMasterRecipe(key, dose) {
+    const r = MASTER_RECIPES.find((x) => x.key === key);
+    if (!r) return null;
+    dose = num(dose) || r.dose;
+    const water = Math.round(dose * r.water / r.dose);
+    return {
+      method: r.method,
+      dose,
+      ratio: round(r.water / r.dose, 0.1),
+      water,
+      temp: r.temp,
+      dripper: r.dripper,
+      totalTime: r.totalTime,
+      recipeKey: r.key,
+      recipeName: r.name,
+      stages: scaleStages(r.stages, water),
+    };
   }
 
   // ---------- 研磨刻度 ----------
@@ -295,6 +398,7 @@
     num, round, parseTime, formatTime,
     waterFromDose, doseFromWater, ratioOf, estimatedBeverage,
     stagesTotal, cumulative, scaleStages, stageEnd, stageIndexAt, migrateStages, POUR_TEMPLATES, buildTemplate,
+    MASTER_RECIPES, applyMasterRecipe,
     METHOD_RANGES, GRINDER_PRESETS, canConvert, grinderMicrons, grinderSetting,
     convertGrind, calibrateZero, methodsForMicrons, grinderRangeTable,
     restDays,
