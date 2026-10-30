@@ -300,7 +300,7 @@
       water,
       temp: r.temp,
       dripper: r.dripper,
-      totalTime: r.totalTime,
+      targetTime: r.totalTime,
       recipeKey: r.key,
       recipeName: r.name,
       stages: scaleStages(r.stages, water),
@@ -382,6 +382,97 @@
     }));
   }
 
+  // ---------- 建議分段 ----------
+
+  const SUGGEST_STYLES = {
+    '60-40': { label: '60/40', note: '悶蒸後先注到總水量 60%，再注完剩下 40%（Hoffmann 的結構）' },
+    '4-6': { label: '4:6', note: '前 40% 分兩注調酸甜、後 60% 分三注調濃度（粕谷哲的結構）' },
+    even: { label: '平均三段', note: '悶蒸後把剩下的水平均分兩次注入' },
+  };
+
+  /** 依烘焙度建議水溫（Hario：淺焙可到 100°C、中焙約 96°C、最深約 90°C） */
+  const ROAST_TEMP = { 極淺焙: 100, 淺焙: 98, 中淺焙: 96, 中焙: 94, 中深焙: 92, 深焙: 90 };
+
+  /** 目標總時間：15g 約 3:00，每多 5g 約加 10 秒（由 Hoffmann 15g≈3:00、30g≈3:30 推估） */
+  function targetSeconds(dose) {
+    dose = num(dose) || 15;
+    return Math.max(150, Math.round((180 + (dose - 15) * 2) / 5) * 5);
+  }
+
+  const r5 = (sec) => Math.round(sec / 5) * 5;
+
+  /**
+   * 建議分段。有參考記錄（例如這支豆子的最佳配方）就照它的比例與時間點換算水量；
+   * 沒有就依風格（60/40、4:6、平均三段）用經驗法則產生。
+   * 回傳 { stages, targetTime, temp, basis }，粉量或水量沒填回傳 null。
+   */
+  function suggestStages(opts) {
+    const dose = num(opts.dose);
+    const water = num(opts.water);
+    if (!dose || !water) return null;
+    const ref = opts.reference;
+    if (ref && ref.stages && stagesTotal(ref.stages) > 0) {
+      const target = parseTime(ref.targetTime) !== null ? parseTime(ref.targetTime) : parseTime(ref.totalTime);
+      return {
+        stages: scaleStages(ref.stages, Math.round(water)),
+        targetTime: formatTime(target !== null ? target : targetSeconds(dose)),
+        temp: num(ref.temp),
+        basis: 'reference',
+      };
+    }
+    const style = SUGGEST_STYLES[opts.style] ? opts.style : '60-40';
+    const w = Math.round(water);
+    let target = targetSeconds(dose);
+    const bloom = Math.min(Math.round(dose * 2), Math.round(w * 0.25));
+    const bloomEnd = dose > 18 ? 45 : 40;
+    let stages;
+    if (style === '4-6') {
+      const first = Math.round(w * 0.4);
+      const p1 = Math.round(first * 5 / 12); // 粕谷哲 20g/300g 的 50:70
+      const rest = w - first;
+      const p3 = Math.round(rest / 3);
+      const k = target / 210; // 原配方 3:30
+      const ends = [45, 90, 135, 180, 210].map((e) => r5(e * k));
+      stages = [
+        { label: '第 1 注', amount: p1, end: ends[0], technique: '前 40%：這注少偏甜、多偏酸' },
+        { label: '第 2 注', amount: first - p1, end: ends[1] },
+        { label: '第 3 注', amount: p3, end: ends[2], technique: '後 60% 分三次，調整濃度' },
+        { label: '第 4 注', amount: p3, end: ends[3] },
+        { label: '第 5 注', amount: rest - p3 * 2, end: ends[4], technique: '時間到移開濾杯' },
+      ];
+      return { stages, targetTime: formatTime(ends[4]), temp: ROAST_TEMP[opts.roast] || null, basis: style };
+    }
+    let p2;
+    let ends;
+    if (style === 'even') {
+      p2 = Math.round((w - bloom) / 2);
+      ends = [bloomEnd, bloomEnd + 40, bloomEnd + 80];
+    } else {
+      p2 = Math.round(w * 0.6) - bloom;
+      ends = [bloomEnd, bloomEnd + 35, bloomEnd + 70];
+    }
+    target = Math.max(target, ends[2] + 60);
+    stages = [
+      { label: '悶蒸', amount: bloom, end: ends[0], technique: '繞圈注水讓粉全部濕透' },
+      { label: '第 2 段', amount: p2, end: ends[1] },
+      { label: '第 3 段', amount: w - bloom - p2, end: ends[2] },
+      { label: '滴濾', amount: 0, end: target, technique: '等待滴濾完成' },
+    ];
+    return { stages, targetTime: formatTime(target), temp: ROAST_TEMP[opts.roast] || null, basis: style };
+  }
+
+  /** 實際總時間和目標比較，給研磨建議（差 15 秒內算剛好） */
+  function timeAdvice(targetTime, actualTime) {
+    const t = parseTime(targetTime);
+    const a = parseTime(actualTime);
+    if (t === null || a === null) return null;
+    const diff = a - t;
+    if (Math.abs(diff) <= 15) return { diff, level: 'ok', text: '總時間在目標範圍內' };
+    return diff > 0
+      ? { diff, level: 'slow', text: `比目標慢 ${diff} 秒，下次可以磨粗一點` }
+      : { diff, level: 'fast', text: `比目標快 ${-diff} 秒，下次可以磨細一點` };
+  }
+
   // ---------- 豆子 ----------
 
   /** 養豆天數（沖煮日 − 烘焙日） */
@@ -398,7 +489,7 @@
     num, round, parseTime, formatTime,
     waterFromDose, doseFromWater, ratioOf, estimatedBeverage,
     stagesTotal, cumulative, scaleStages, stageEnd, stageIndexAt, migrateStages, POUR_TEMPLATES, buildTemplate,
-    MASTER_RECIPES, applyMasterRecipe,
+    MASTER_RECIPES, applyMasterRecipe, SUGGEST_STYLES, ROAST_TEMP, targetSeconds, suggestStages, timeAdvice,
     METHOD_RANGES, GRINDER_PRESETS, canConvert, grinderMicrons, grinderSetting,
     convertGrind, calibrateZero, methodsForMicrons, grinderRangeTable,
     restDays,

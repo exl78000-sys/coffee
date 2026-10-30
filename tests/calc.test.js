@@ -70,6 +70,46 @@ test('大師配方依粉量換算，時間點不變', () => {
   assert.equal(C.applyMasterRecipe('nope', 15), null);
 });
 
+test('建議分段：60/40 經驗法則', () => {
+  const r = C.suggestStages({ dose: 15, water: 240, style: '60-40', roast: '淺焙' });
+  assert.deepEqual(r.stages.map((s) => s.amount), [30, 114, 96, 0]);
+  assert.deepEqual(r.stages.map((s) => s.end), [40, 75, 110, 180]);
+  assert.equal(r.targetTime, '3:00');
+  assert.equal(r.temp, 98);
+  assert.equal(r.basis, '60-40');
+});
+
+test('建議分段：各風格總水量正確、時間遞增', () => {
+  for (const style of Object.keys(C.SUGGEST_STYLES)) {
+    for (const [dose, water] of [[12, 200], [15, 240], [20, 300], [30, 500]]) {
+      const r = C.suggestStages({ dose, water, style });
+      assert.equal(C.stagesTotal(r.stages), water, style + dose);
+      const ends = r.stages.map((s) => s.end);
+      assert.ok(ends.every((e, i) => i === 0 || e > ends[i - 1]), style + dose + ends);
+    }
+  }
+  assert.equal(C.suggestStages({ dose: 15, water: null }), null);
+});
+
+test('建議分段：有參考記錄就照它的比例與時間點', () => {
+  const reference = { stages: [{ amount: 40, end: 30 }, { amount: 200, end: 100 }], totalTime: '2:50', temp: 93 };
+  const r = C.suggestStages({ dose: 18, water: 288, reference });
+  assert.deepEqual(r.stages.map((s) => s.amount), [48, 240]);
+  assert.deepEqual(r.stages.map((s) => s.end), [30, 100]);
+  assert.equal(r.targetTime, '2:50');
+  assert.equal(r.temp, 93);
+  assert.equal(r.basis, 'reference');
+});
+
+test('目標總時間與研磨建議', () => {
+  assert.equal(C.targetSeconds(15), 180);
+  assert.equal(C.targetSeconds(30), 210);
+  assert.equal(C.timeAdvice('3:00', '3:40').level, 'slow');
+  assert.equal(C.timeAdvice('3:00', '2:30').level, 'fast');
+  assert.equal(C.timeAdvice('3:00', '3:10').level, 'ok');
+  assert.equal(C.timeAdvice('', '3:10'), null);
+});
+
 test('計時器段落判斷（秒數為每段結束時間）', () => {
   const stages = [{ end: 40 }, { end: '1:20' }, { end: 120 }];
   assert.equal(C.stageIndexAt(stages, 0), 0);

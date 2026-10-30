@@ -369,6 +369,18 @@ input[type="range"] { padding: 0; border: 0; background: none; accent-color: var
 .stage-sub:empty { display: none; }
 .stage-more { display: grid; gap: 6px; margin: 8px 0 2px 34px; }
 .stage-help { margin: -4px 0 10px; }
+.diff-table { table-layout: fixed; }
+.diff-table th:first-child, .diff-table td:first-child { width: 5.5em; }
+.diff-table td { overflow-wrap: anywhere; }
+.suggest-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.suggest-row select { flex: 1; min-height: 34px; padding: 4px 8px; font-size: .88rem; }
+
+.compare .table { min-width: max-content; }
+.compare th, .compare td { white-space: nowrap; max-width: 14em; overflow: hidden; text-overflow: ellipsis; }
+.compare tbody th { color: var(--muted); font-weight: 500; text-align: left; position: sticky; left: 0; background: var(--bg); }
+.compare td.chg, .chg-key { background: var(--warn-bg); }
+.chg-key { padding: 0 4px; border-radius: 4px; }
+.compare .bestcol { box-shadow: inset 2px 0 0 var(--gold), inset -2px 0 0 var(--gold); }
 
 details.tpl { margin-top: 10px; }
 details.tpl summary { cursor: pointer; font-size: .88rem; color: var(--muted); padding: 4px 0; }
@@ -906,7 +918,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       water,
       temp: r.temp,
       dripper: r.dripper,
-      totalTime: r.totalTime,
+      targetTime: r.totalTime,
       recipeKey: r.key,
       recipeName: r.name,
       stages: scaleStages(r.stages, water),
@@ -988,6 +1000,97 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     }));
   }
 
+  // ---------- 建議分段 ----------
+
+  const SUGGEST_STYLES = {
+    '60-40': { label: '60/40', note: '悶蒸後先注到總水量 60%，再注完剩下 40%（Hoffmann 的結構）' },
+    '4-6': { label: '4:6', note: '前 40% 分兩注調酸甜、後 60% 分三注調濃度（粕谷哲的結構）' },
+    even: { label: '平均三段', note: '悶蒸後把剩下的水平均分兩次注入' },
+  };
+
+  /** 依烘焙度建議水溫（Hario：淺焙可到 100°C、中焙約 96°C、最深約 90°C） */
+  const ROAST_TEMP = { 極淺焙: 100, 淺焙: 98, 中淺焙: 96, 中焙: 94, 中深焙: 92, 深焙: 90 };
+
+  /** 目標總時間：15g 約 3:00，每多 5g 約加 10 秒（由 Hoffmann 15g≈3:00、30g≈3:30 推估） */
+  function targetSeconds(dose) {
+    dose = num(dose) || 15;
+    return Math.max(150, Math.round((180 + (dose - 15) * 2) / 5) * 5);
+  }
+
+  const r5 = (sec) => Math.round(sec / 5) * 5;
+
+  /**
+   * 建議分段。有參考記錄（例如這支豆子的最佳配方）就照它的比例與時間點換算水量；
+   * 沒有就依風格（60/40、4:6、平均三段）用經驗法則產生。
+   * 回傳 { stages, targetTime, temp, basis }，粉量或水量沒填回傳 null。
+   */
+  function suggestStages(opts) {
+    const dose = num(opts.dose);
+    const water = num(opts.water);
+    if (!dose || !water) return null;
+    const ref = opts.reference;
+    if (ref && ref.stages && stagesTotal(ref.stages) > 0) {
+      const target = parseTime(ref.targetTime) !== null ? parseTime(ref.targetTime) : parseTime(ref.totalTime);
+      return {
+        stages: scaleStages(ref.stages, Math.round(water)),
+        targetTime: formatTime(target !== null ? target : targetSeconds(dose)),
+        temp: num(ref.temp),
+        basis: 'reference',
+      };
+    }
+    const style = SUGGEST_STYLES[opts.style] ? opts.style : '60-40';
+    const w = Math.round(water);
+    let target = targetSeconds(dose);
+    const bloom = Math.min(Math.round(dose * 2), Math.round(w * 0.25));
+    const bloomEnd = dose > 18 ? 45 : 40;
+    let stages;
+    if (style === '4-6') {
+      const first = Math.round(w * 0.4);
+      const p1 = Math.round(first * 5 / 12); // 粕谷哲 20g/300g 的 50:70
+      const rest = w - first;
+      const p3 = Math.round(rest / 3);
+      const k = target / 210; // 原配方 3:30
+      const ends = [45, 90, 135, 180, 210].map((e) => r5(e * k));
+      stages = [
+        { label: '第 1 注', amount: p1, end: ends[0], technique: '前 40%：這注少偏甜、多偏酸' },
+        { label: '第 2 注', amount: first - p1, end: ends[1] },
+        { label: '第 3 注', amount: p3, end: ends[2], technique: '後 60% 分三次，調整濃度' },
+        { label: '第 4 注', amount: p3, end: ends[3] },
+        { label: '第 5 注', amount: rest - p3 * 2, end: ends[4], technique: '時間到移開濾杯' },
+      ];
+      return { stages, targetTime: formatTime(ends[4]), temp: ROAST_TEMP[opts.roast] || null, basis: style };
+    }
+    let p2;
+    let ends;
+    if (style === 'even') {
+      p2 = Math.round((w - bloom) / 2);
+      ends = [bloomEnd, bloomEnd + 40, bloomEnd + 80];
+    } else {
+      p2 = Math.round(w * 0.6) - bloom;
+      ends = [bloomEnd, bloomEnd + 35, bloomEnd + 70];
+    }
+    target = Math.max(target, ends[2] + 60);
+    stages = [
+      { label: '悶蒸', amount: bloom, end: ends[0], technique: '繞圈注水讓粉全部濕透' },
+      { label: '第 2 段', amount: p2, end: ends[1] },
+      { label: '第 3 段', amount: w - bloom - p2, end: ends[2] },
+      { label: '滴濾', amount: 0, end: target, technique: '等待滴濾完成' },
+    ];
+    return { stages, targetTime: formatTime(target), temp: ROAST_TEMP[opts.roast] || null, basis: style };
+  }
+
+  /** 實際總時間和目標比較，給研磨建議（差 15 秒內算剛好） */
+  function timeAdvice(targetTime, actualTime) {
+    const t = parseTime(targetTime);
+    const a = parseTime(actualTime);
+    if (t === null || a === null) return null;
+    const diff = a - t;
+    if (Math.abs(diff) <= 15) return { diff, level: 'ok', text: '總時間在目標範圍內' };
+    return diff > 0
+      ? { diff, level: 'slow', text: `比目標慢 ${diff} 秒，下次可以磨粗一點` }
+      : { diff, level: 'fast', text: `比目標快 ${-diff} 秒，下次可以磨細一點` };
+  }
+
   // ---------- 豆子 ----------
 
   /** 養豆天數（沖煮日 − 烘焙日） */
@@ -1004,7 +1107,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     num, round, parseTime, formatTime,
     waterFromDose, doseFromWater, ratioOf, estimatedBeverage,
     stagesTotal, cumulative, scaleStages, stageEnd, stageIndexAt, migrateStages, POUR_TEMPLATES, buildTemplate,
-    MASTER_RECIPES, applyMasterRecipe,
+    MASTER_RECIPES, applyMasterRecipe, SUGGEST_STYLES, ROAST_TEMP, targetSeconds, suggestStages, timeAdvice,
     METHOD_RANGES, GRINDER_PRESETS, canConvert, grinderMicrons, grinderSetting,
     convertGrind, calibrateZero, methodsForMicrons, grinderRangeTable,
     restDays,
@@ -1069,7 +1172,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       ['id', 'id'], ['date', '日期', 'date'], ['method', '沖煮法', 'method'], [null, '豆子', 'derived:bean'],
       [null, '磨豆機', 'derived:grinder'], ['grindSetting', '刻度'], ['dose', '粉量 g', 'num'],
       ['ratio', '水粉比 1:', 'num'], ['water', '水量 g', 'num'], ['yield', '萃取量 g', 'num'],
-      ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
+      ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], ['targetTime', '目標時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
       ['rating', '評分', 'num'], ['acidity', '酸', 'num'], ['sweetness', '甜', 'num'], ['bitterness', '苦', 'num'],
       ['body', '醇厚', 'num'], ['flavorNotes', '風味描述'], ['notes', '心得'], ['nextTime', '下次調整'],
       ['isBest', '最佳配方', 'bool'], ['recipeName', '參考配方'],
@@ -1425,7 +1528,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
   };
 
   const RECIPE_FIELDS = ['method', 'grinderId', 'grinderName', 'grindSetting', 'dose', 'ratio', 'water', 'yield', 'temp', 'dripper', 'filter',
-    'machine', 'basket', 'preinfusion', 'pressure', 'waterStart', 'heat', 'flowStart', 'totalTime'];
+    'machine', 'basket', 'preinfusion', 'pressure', 'waterStart', 'heat', 'flowStart', 'totalTime', 'targetTime'];
   const NUM_FIELDS = new Set(['dose', 'ratio', 'water', 'yield', 'temp', 'preinfusion', 'pressure']);
   const TASTE = [['acidity', '酸'], ['sweetness', '甜'], ['bitterness', '苦'], ['body', '醇厚']];
   const TASTE_KEYS = new Set(TASTE.map((t) => t[0]));
@@ -1669,6 +1772,88 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     </a>`;
   }
 
+  function adviceLine(b) {
+    const adv = C.timeAdvice(b.targetTime, b.totalTime);
+    if (!adv) return '';
+    return `<p class="${adv.level === 'ok' ? 'muted small' : 'note'}">目標 ${esc(b.targetTime)}，實際 ${esc(b.totalTime)}：${esc(adv.text)}</p>`;
+  }
+
+  // ---------- 不同次對比 ----------
+
+  function beanNameOf(b) {
+    return brewBeanName(b);
+  }
+
+  /** 同一支豆子、同一種沖煮法的記錄（舊到新） */
+  function sameBeanBrews(b) {
+    return S.all('brews').filter((x) => x.method === b.method &&
+      (b.beanId ? x.beanId === b.beanId : !x.beanId && x.beanName && x.beanName === b.beanName))
+      .sort((x, y) => String(x.date || '').localeCompare(String(y.date || '')));
+  }
+
+  function stagesSummary(stages) {
+    return (stages || []).filter((s) => s.amount || C.stageEnd(s) !== null)
+      .map((s) => (s.amount ? s.amount + 'g' : '—') + (C.stageEnd(s) !== null ? '/' + C.formatTime(C.stageEnd(s)) : '')).join('、');
+  }
+
+  // 對比的項目：[標籤, 取值函式]
+  const COMPARE_ROWS = [
+    ['評分', (b) => (b.rating ? '★'.repeat(b.rating) : '')],
+    ['粉量', (b) => (b.dose ? b.dose + 'g' : '')],
+    ['水粉比', (b) => (b.ratio ? '1:' + b.ratio : '')],
+    ['水量', (b) => { const m = METHODS[b.method] || METHODS.pourover; return b[m.out] ? b[m.out] + 'g' : ''; }],
+    ['水溫', (b) => (b.temp ? b.temp + '°C' : '')],
+    ['研磨', (b) => grindText(b)],
+    ['器具', (b) => b.dripper || ''],
+    ['分段', (b) => stagesSummary(b.stages)],
+    ['總時間', (b) => b.totalTime || ''],
+    ['目標時間', (b) => b.targetTime || ''],
+    ['酸', (b) => b.acidity || ''],
+    ['甜', (b) => b.sweetness || ''],
+    ['苦', (b) => b.bitterness || ''],
+    ['醇厚', (b) => b.body || ''],
+    ['風味', (b) => b.flavorNotes || ''],
+    ['下次調整', (b) => b.nextTime || ''],
+  ];
+
+  /** 跟同一支豆子的上一杯比，只列出有變的項目 */
+  function prevCompare(b) {
+    const list = sameBeanBrews(b);
+    const i = list.findIndex((x) => x.id === b.id);
+    const prev = i > 0 ? list[i - 1] : null;
+    if (!prev) return '';
+    const rows = COMPARE_ROWS.filter(([label]) => !['風味', '下次調整'].includes(label))
+      .map(([label, get]) => [label, String(get(prev)), String(get(b))])
+      .filter(([, a, c]) => a !== c);
+    return `<section class="card"><div class="card-head"><h2>跟上一杯比</h2><a class="small" href="#/compare?brew=${b.id}">全部對比（${list.length}）</a></div>
+      <p class="muted small">上一杯：<a href="#/brew/${prev.id}">${esc(fmtDate(prev.date))}</a>${prev.nextTime ? `，當時想調整：${esc(prev.nextTime)}` : ''}</p>
+      ${rows.length ? `<table class="table diff-table"><thead><tr><th>項目</th><th>上一杯</th><th>這杯</th></tr></thead>
+        <tbody>${rows.map(([l, a, c]) => `<tr><td>${l}</td><td class="muted">${esc(a) || '—'}</td><td><b>${esc(c) || '—'}</b></td></tr>`).join('')}</tbody></table>`
+        : '<p class="muted small">參數跟上一杯一樣。</p>'}
+    </section>`;
+  }
+
+  /** 同一支豆子的所有記錄並排比較，跟前一杯不同的格子標出來 */
+  function renderCompare(q) {
+    const b = S.get('brews', q.get('brew'));
+    if (!b) return notFound();
+    const list = sameBeanBrews(b).slice(-10);
+    const best = list.reduce((acc, x) => (x.isBest ? x : !acc || (!acc.isBest && (x.rating || 0) > (acc.rating || 0)) ? x : acc), null);
+    mount(`<div class="page">
+      ${header('對比：' + beanNameOf(b), { back: '#/brew/' + b.id })}
+      <p class="muted small">${METHODS[b.method].label}，共 ${list.length} 杯（舊 → 新）。<span class="chg-key">黃底</span>＝跟前一杯不同，<span class="best">★ 欄</span>＝最佳／評分最高。</p>
+      <div class="scroll-x compare"><table class="table">
+        <thead><tr><th></th>${list.map((x) => `<th class="${x === best ? 'bestcol' : ''}"><a href="#/brew/${x.id}">${esc(fmtDate(x.date))}</a>${x === best ? ' <span class="best">★</span>' : ''}</th>`).join('')}</tr></thead>
+        <tbody>${COMPARE_ROWS.map(([label, get]) => `<tr><th>${label}</th>${list.map((x, i) => {
+          const v = String(get(x));
+          const changed = i > 0 && v !== String(get(list[i - 1]));
+          return `<td class="${changed ? 'chg' : ''} ${x === best ? 'bestcol' : ''}">${esc(v) || '—'}</td>`;
+        }).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="actions"><a class="btn primary" href="#/brew/new?from=${(best || b).id}">用${best ? '最好的一杯' : '這杯'}再沖一次</a></div>
+    </div>`);
+  }
+
   function recipeLine(b) {
     const r = b.recipeKey && C.MASTER_RECIPES.find((x) => x.key === b.recipeKey);
     return r ? `<p class="muted small">參考配方：${esc(r.name)} · ${sourceLink(r)}</p>` : '';
@@ -1720,6 +1905,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     } else if (a === 'timer') renderTimer(b);
     else if (a === 'tools') renderTools(q);
     else if (a === 'settings') renderSettings();
+    else if (a === 'compare') { tab = 'brews'; renderCompare(q); }
     else if (a === 'grinder') { tab = 'settings'; renderGrinderForm(b === 'new' ? null : b); }
     else { go('#/brews', true); return; }
 
@@ -1780,6 +1966,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       ['水粉比', b.ratio ? '1:' + b.ratio : ''],
       [m.outLabel, b[m.out] ? b[m.out] + ' g' : ''],
       ['總時間', b.totalTime],
+      ['目標時間', b.targetTime],
       ['研磨', grindText(b) + (mic !== null ? `（≈${mic}µm）` : '')],
     ].concat((EXTRA[b.method] || []).map(([f, label]) => [label, b[f]]))
       .concat([['養豆天數', rd !== null ? rd + ' 天' : '']])
@@ -1791,8 +1978,9 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     const page = mount(`<div class="page">
       ${header(brewBeanName(b), { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
       <div class="row sub">${methodTag(b.method)}<span class="muted">${esc(fmtDate(b.date))}</span>${b.isBest ? '<span class="best">★ 最佳配方</span>' : ''}</div>
-      <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></section>
-      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}${recipeLine(b)}</section>` : ''}
+      <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>${adviceLine(b)}</section>
+      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}${recipeLine(b)}${b.suggestBasis ? `<p class="muted small">建議依據：${esc(b.suggestBasis)}</p>` : ''}</section>` : ''}
+      ${prevCompare(b)}
       <section class="card"><h2>風味</h2>
         <div class="big-stars">${stars(b.rating)}</div>
         ${tasteBars ? `<div class="bars">${tasteBars}</div>` : ''}
@@ -1883,6 +2071,8 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       updateGrindHint();
       updateRatioHint();
       updateRecipeHint();
+      updateSuggestHint();
+      updateTimeHint();
     }
 
     function formHtml() {
@@ -1926,13 +2116,23 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
             <div class="grid2">
               ${extras}
               ${field(d.method === 'espresso' ? '萃取時間' : '總時間', `<input data-f="totalTime" value="${esc(d.totalTime)}" placeholder="${d.method === 'espresso' ? '0:28' : '2:45'}" inputmode="numeric">`)}
+              ${m.stages ? field('目標時間', `<input data-f="targetTime" value="${esc(d.targetTime)}" placeholder="3:00" inputmode="numeric">`) : ''}
             </div>
+            <div id="time-hint" class="hint"></div>
           </section>
 
           ${m.stages ? `<section class="card">
             <div class="card-head"><h2>分段注水</h2>
               <label class="check"><input type="checkbox" id="auto-scale" ${autoScale ? 'checked' : ''}> 隨水量等比例調整</label></div>
             <p class="muted small stage-help">每段填注水克數，和這段<b>結束</b>的秒數（例：30 或 1:30）。</p>
+            ${d.method === 'pourover' ? `<div class="suggest-row">
+              <button type="button" class="btn small" data-act="suggest">建議分段</button>
+              <select id="suggest-style" aria-label="建議的依據">
+                <option value="auto">自動（先找我的記錄）</option>
+                ${Object.entries(C.SUGGEST_STYLES).map(([k, st]) => `<option value="${k}">${st.label}</option>`).join('')}
+              </select>
+            </div>
+            <div id="suggest-hint" class="hint"></div>` : ''}
             <div id="stages"></div>
             <button type="button" class="btn ghost block" data-act="add-stage">＋ 手動新增</button>
             <div id="stage-sum" class="hint"></div>
@@ -2057,6 +2257,39 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       el.innerHTML = html;
     }
 
+    /** 「自動」建議時找參考記錄：這支豆子的最佳配方 → 同烘焙度豆子裡評分 4 星以上的一杯 */
+    function findReference() {
+      const bean = S.get('beans', d.beanId);
+      if (!bean) return null;
+      const best = bestBrew(bean.id, d.method, d.id);
+      if (best && best.stages && best.stages.length) {
+        return { brew: best, text: `${bean.name} 的${best.isBest ? '最佳配方' : '評分最高的一杯'}（${fmtDate(best.date)}${best.rating ? '，' + '★'.repeat(best.rating) : ''}）` };
+      }
+      if (!bean.roast) return null;
+      const similar = S.all('brews').filter((b) => {
+        const other = S.get('beans', b.beanId);
+        return b.id !== d.id && b.method === d.method && (b.rating || 0) >= 4 && b.stages && b.stages.length && other && other.roast === bean.roast;
+      }).sort((x, y) => {
+        const px = S.get('beans', x.beanId).process === bean.process ? 1 : 0;
+        const py = S.get('beans', y.beanId).process === bean.process ? 1 : 0;
+        return py - px || y.rating - x.rating || byDateDesc(x, y);
+      })[0];
+      return similar ? { brew: similar, text: `同為${bean.roast}的 ${beanNameOf(similar)}（${fmtDate(similar.date)}，${'★'.repeat(similar.rating)}）` } : null;
+    }
+
+    function updateSuggestHint() {
+      const el = $('#suggest-hint', page);
+      if (el) el.innerHTML = d.suggestBasis ? `<div>依據：${esc(d.suggestBasis)}</div>` : '';
+    }
+
+    function updateTimeHint() {
+      const el = $('#time-hint', page);
+      if (!el) return;
+      const adv = C.timeAdvice(d.targetTime, d.totalTime);
+      el.className = 'hint' + (adv && adv.level !== 'ok' ? ' warn' : '');
+      el.textContent = adv ? `目標 ${d.targetTime}，實際 ${d.totalTime}：${adv.text}` : '';
+    }
+
     function updateRecipeHint() {
       const el = $('#recipe-hint', page);
       if (!el) return;
@@ -2165,6 +2398,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
         if (r !== null) { d.ratio = r; setVal('ratio', r); }
         onOutChanged();
       }
+      if (f === 'totalTime' || f === 'targetTime') updateTimeHint();
       updateRatioHint();
       updateStageSum();
     }
@@ -2173,13 +2407,39 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       const b = e.target.closest('[data-act]');
       if (!b) return;
       const act = b.dataset.act;
-      if (act === 'master') {
+      if (act === 'suggest') {
+        const style = $('#suggest-style', page).value;
+        const ref = style === 'auto' ? findReference() : null;
+        const bean = S.get('beans', d.beanId);
+        const sug = C.suggestStages({
+          dose: d.dose, water: d.water, style: style === 'auto' ? '60-40' : style,
+          roast: bean && bean.roast, reference: ref && ref.brew,
+        });
+        if (!sug) return toast('請先填粉量與水量');
+        const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
+        if (filled && !await ask('以建議的分段取代目前的分段？', '取代')) return;
+        d.stages = sug.stages;
+        d.targetTime = sug.targetTime;
+        setVal('targetTime', sug.targetTime);
+        if (sug.temp) { d.temp = sug.temp; setVal('temp', sug.temp); }
+        const st = C.SUGGEST_STYLES[sug.basis];
+        d.suggestBasis = ref ? ref.text : `通用經驗法則 ${st.label}：${st.note}` +
+          (sug.temp && bean && bean.roast ? `；水溫依${bean.roast}建議 ${sug.temp}°C` : '');
+        delete d.recipeKey;
+        delete d.recipeName;
+        renderStages();
+        updateRecipeHint();
+        updateSuggestHint();
+        updateTimeHint();
+        toast('已填入建議，可以再手動調整');
+      } else if (act === 'master') {
         const r = C.MASTER_RECIPES.find((x) => x.key === b.dataset.k);
         const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
         if (filled && !await ask(`以「${r.name}」取代目前的分段與比例？`, '套用')) return;
         const a = C.applyMasterRecipe(r.key, d.dose);
         if (d.dripper) delete a.dripper;
         Object.assign(d, a);
+        delete d.suggestBasis;
         draw();
         toast(`已套用 ${r.name}`);
       } else if (act === 'tpl') {
@@ -2191,8 +2451,10 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
         d.stages = built;
         delete d.recipeKey;
         delete d.recipeName;
+        delete d.suggestBasis;
         renderStages();
         updateRecipeHint();
+        updateSuggestHint();
       } else if (act === 'add-stage') {
         d.stages.push(blankStage());
         renderStages();
@@ -2328,6 +2590,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
       }).join('')}
       <div class="actions">
         <a class="btn primary" href="#/brew/new?bean=${id}">＋ 用這支豆子沖一杯</a>
+        ${brews.length > 1 ? `<a class="btn" href="#/compare?brew=${brews[0].id}">對比記錄</a>` : ''}
         <button class="btn ghost" data-act="archive">${bean.archived ? '移回架上' : '標記為已喝完'}</button>
       </div>
       <h2 class="section-title">所有記錄（${brews.length}）</h2>
@@ -2610,7 +2873,7 @@ input.filled, select.filled, textarea.filled { border-color: var(--gold); backgr
     // 每段的秒數是「這段結束」的時間
     const stages = brew ? C.migrateStages(brew.stages || [], brew.totalTime).filter((s) => C.stageEnd(s) !== null) : [];
     const cum = C.cumulative(stages);
-    const target = brew ? C.parseTime(brew.totalTime) : null;
+    const target = brew ? C.parseTime(brew.targetTime || brew.totalTime) : null;
 
     const page = mount(`<div class="page timer-page">
       ${header('計時沖煮', { back: recipe ? '#/tools?t=recipes' : brew ? '#/brew/' + id : '#/timer' })}

@@ -54,7 +54,7 @@
       ['id', 'id'], ['date', '日期', 'date'], ['method', '沖煮法', 'method'], [null, '豆子', 'derived:bean'],
       [null, '磨豆機', 'derived:grinder'], ['grindSetting', '刻度'], ['dose', '粉量 g', 'num'],
       ['ratio', '水粉比 1:', 'num'], ['water', '水量 g', 'num'], ['yield', '萃取量 g', 'num'],
-      ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
+      ['temp', '水溫 °C', 'num'], ['totalTime', '總時間'], ['targetTime', '目標時間'], [null, '分段', 'derived:stages'], ['dripper', '器具'],
       ['rating', '評分', 'num'], ['acidity', '酸', 'num'], ['sweetness', '甜', 'num'], ['bitterness', '苦', 'num'],
       ['body', '醇厚', 'num'], ['flavorNotes', '風味描述'], ['notes', '心得'], ['nextTime', '下次調整'],
       ['isBest', '最佳配方', 'bool'], ['recipeName', '參考配方'],

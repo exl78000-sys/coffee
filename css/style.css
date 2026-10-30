@@ -361,6 +361,18 @@ input[type="range"] { padding: 0; border: 0; background: none; accent-color: var
 .stage-sub:empty { display: none; }
 .stage-more { display: grid; gap: 6px; margin: 8px 0 2px 34px; }
 .stage-help { margin: -4px 0 10px; }
+.diff-table { table-layout: fixed; }
+.diff-table th:first-child, .diff-table td:first-child { width: 5.5em; }
+.diff-table td { overflow-wrap: anywhere; }
+.suggest-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.suggest-row select { flex: 1; min-height: 34px; padding: 4px 8px; font-size: .88rem; }
+
+.compare .table { min-width: max-content; }
+.compare th, .compare td { white-space: nowrap; max-width: 14em; overflow: hidden; text-overflow: ellipsis; }
+.compare tbody th { color: var(--muted); font-weight: 500; text-align: left; position: sticky; left: 0; background: var(--bg); }
+.compare td.chg, .chg-key { background: var(--warn-bg); }
+.chg-key { padding: 0 4px; border-radius: 4px; }
+.compare .bestcol { box-shadow: inset 2px 0 0 var(--gold), inset -2px 0 0 var(--gold); }
 
 details.tpl { margin-top: 10px; }
 details.tpl summary { cursor: pointer; font-size: .88rem; color: var(--muted); padding: 4px 0; }

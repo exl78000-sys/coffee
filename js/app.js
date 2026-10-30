@@ -32,7 +32,7 @@
   };
 
   const RECIPE_FIELDS = ['method', 'grinderId', 'grinderName', 'grindSetting', 'dose', 'ratio', 'water', 'yield', 'temp', 'dripper', 'filter',
-    'machine', 'basket', 'preinfusion', 'pressure', 'waterStart', 'heat', 'flowStart', 'totalTime'];
+    'machine', 'basket', 'preinfusion', 'pressure', 'waterStart', 'heat', 'flowStart', 'totalTime', 'targetTime'];
   const NUM_FIELDS = new Set(['dose', 'ratio', 'water', 'yield', 'temp', 'preinfusion', 'pressure']);
   const TASTE = [['acidity', '酸'], ['sweetness', '甜'], ['bitterness', '苦'], ['body', '醇厚']];
   const TASTE_KEYS = new Set(TASTE.map((t) => t[0]));
@@ -276,6 +276,88 @@
     </a>`;
   }
 
+  function adviceLine(b) {
+    const adv = C.timeAdvice(b.targetTime, b.totalTime);
+    if (!adv) return '';
+    return `<p class="${adv.level === 'ok' ? 'muted small' : 'note'}">目標 ${esc(b.targetTime)}，實際 ${esc(b.totalTime)}：${esc(adv.text)}</p>`;
+  }
+
+  // ---------- 不同次對比 ----------
+
+  function beanNameOf(b) {
+    return brewBeanName(b);
+  }
+
+  /** 同一支豆子、同一種沖煮法的記錄（舊到新） */
+  function sameBeanBrews(b) {
+    return S.all('brews').filter((x) => x.method === b.method &&
+      (b.beanId ? x.beanId === b.beanId : !x.beanId && x.beanName && x.beanName === b.beanName))
+      .sort((x, y) => String(x.date || '').localeCompare(String(y.date || '')));
+  }
+
+  function stagesSummary(stages) {
+    return (stages || []).filter((s) => s.amount || C.stageEnd(s) !== null)
+      .map((s) => (s.amount ? s.amount + 'g' : '—') + (C.stageEnd(s) !== null ? '/' + C.formatTime(C.stageEnd(s)) : '')).join('、');
+  }
+
+  // 對比的項目：[標籤, 取值函式]
+  const COMPARE_ROWS = [
+    ['評分', (b) => (b.rating ? '★'.repeat(b.rating) : '')],
+    ['粉量', (b) => (b.dose ? b.dose + 'g' : '')],
+    ['水粉比', (b) => (b.ratio ? '1:' + b.ratio : '')],
+    ['水量', (b) => { const m = METHODS[b.method] || METHODS.pourover; return b[m.out] ? b[m.out] + 'g' : ''; }],
+    ['水溫', (b) => (b.temp ? b.temp + '°C' : '')],
+    ['研磨', (b) => grindText(b)],
+    ['器具', (b) => b.dripper || ''],
+    ['分段', (b) => stagesSummary(b.stages)],
+    ['總時間', (b) => b.totalTime || ''],
+    ['目標時間', (b) => b.targetTime || ''],
+    ['酸', (b) => b.acidity || ''],
+    ['甜', (b) => b.sweetness || ''],
+    ['苦', (b) => b.bitterness || ''],
+    ['醇厚', (b) => b.body || ''],
+    ['風味', (b) => b.flavorNotes || ''],
+    ['下次調整', (b) => b.nextTime || ''],
+  ];
+
+  /** 跟同一支豆子的上一杯比，只列出有變的項目 */
+  function prevCompare(b) {
+    const list = sameBeanBrews(b);
+    const i = list.findIndex((x) => x.id === b.id);
+    const prev = i > 0 ? list[i - 1] : null;
+    if (!prev) return '';
+    const rows = COMPARE_ROWS.filter(([label]) => !['風味', '下次調整'].includes(label))
+      .map(([label, get]) => [label, String(get(prev)), String(get(b))])
+      .filter(([, a, c]) => a !== c);
+    return `<section class="card"><div class="card-head"><h2>跟上一杯比</h2><a class="small" href="#/compare?brew=${b.id}">全部對比（${list.length}）</a></div>
+      <p class="muted small">上一杯：<a href="#/brew/${prev.id}">${esc(fmtDate(prev.date))}</a>${prev.nextTime ? `，當時想調整：${esc(prev.nextTime)}` : ''}</p>
+      ${rows.length ? `<table class="table diff-table"><thead><tr><th>項目</th><th>上一杯</th><th>這杯</th></tr></thead>
+        <tbody>${rows.map(([l, a, c]) => `<tr><td>${l}</td><td class="muted">${esc(a) || '—'}</td><td><b>${esc(c) || '—'}</b></td></tr>`).join('')}</tbody></table>`
+        : '<p class="muted small">參數跟上一杯一樣。</p>'}
+    </section>`;
+  }
+
+  /** 同一支豆子的所有記錄並排比較，跟前一杯不同的格子標出來 */
+  function renderCompare(q) {
+    const b = S.get('brews', q.get('brew'));
+    if (!b) return notFound();
+    const list = sameBeanBrews(b).slice(-10);
+    const best = list.reduce((acc, x) => (x.isBest ? x : !acc || (!acc.isBest && (x.rating || 0) > (acc.rating || 0)) ? x : acc), null);
+    mount(`<div class="page">
+      ${header('對比：' + beanNameOf(b), { back: '#/brew/' + b.id })}
+      <p class="muted small">${METHODS[b.method].label}，共 ${list.length} 杯（舊 → 新）。<span class="chg-key">黃底</span>＝跟前一杯不同，<span class="best">★ 欄</span>＝最佳／評分最高。</p>
+      <div class="scroll-x compare"><table class="table">
+        <thead><tr><th></th>${list.map((x) => `<th class="${x === best ? 'bestcol' : ''}"><a href="#/brew/${x.id}">${esc(fmtDate(x.date))}</a>${x === best ? ' <span class="best">★</span>' : ''}</th>`).join('')}</tr></thead>
+        <tbody>${COMPARE_ROWS.map(([label, get]) => `<tr><th>${label}</th>${list.map((x, i) => {
+          const v = String(get(x));
+          const changed = i > 0 && v !== String(get(list[i - 1]));
+          return `<td class="${changed ? 'chg' : ''} ${x === best ? 'bestcol' : ''}">${esc(v) || '—'}</td>`;
+        }).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div class="actions"><a class="btn primary" href="#/brew/new?from=${(best || b).id}">用${best ? '最好的一杯' : '這杯'}再沖一次</a></div>
+    </div>`);
+  }
+
   function recipeLine(b) {
     const r = b.recipeKey && C.MASTER_RECIPES.find((x) => x.key === b.recipeKey);
     return r ? `<p class="muted small">參考配方：${esc(r.name)} · ${sourceLink(r)}</p>` : '';
@@ -327,6 +409,7 @@
     } else if (a === 'timer') renderTimer(b);
     else if (a === 'tools') renderTools(q);
     else if (a === 'settings') renderSettings();
+    else if (a === 'compare') { tab = 'brews'; renderCompare(q); }
     else if (a === 'grinder') { tab = 'settings'; renderGrinderForm(b === 'new' ? null : b); }
     else { go('#/brews', true); return; }
 
@@ -387,6 +470,7 @@
       ['水粉比', b.ratio ? '1:' + b.ratio : ''],
       [m.outLabel, b[m.out] ? b[m.out] + ' g' : ''],
       ['總時間', b.totalTime],
+      ['目標時間', b.targetTime],
       ['研磨', grindText(b) + (mic !== null ? `（≈${mic}µm）` : '')],
     ].concat((EXTRA[b.method] || []).map(([f, label]) => [label, b[f]]))
       .concat([['養豆天數', rd !== null ? rd + ' 天' : '']])
@@ -398,8 +482,9 @@
     const page = mount(`<div class="page">
       ${header(brewBeanName(b), { back: '#/brews', action: `<a class="btn small" href="#/brew/${id}/edit">編輯</a>` })}
       <div class="row sub">${methodTag(b.method)}<span class="muted">${esc(fmtDate(b.date))}</span>${b.isBest ? '<span class="best">★ 最佳配方</span>' : ''}</div>
-      <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></section>
-      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}${recipeLine(b)}</section>` : ''}
+      <section class="card"><div class="stats">${stats.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>${adviceLine(b)}</section>
+      ${b.stages && b.stages.length ? `<section class="card"><h2>分段注水</h2>${stagesTable(b.stages)}${recipeLine(b)}${b.suggestBasis ? `<p class="muted small">建議依據：${esc(b.suggestBasis)}</p>` : ''}</section>` : ''}
+      ${prevCompare(b)}
       <section class="card"><h2>風味</h2>
         <div class="big-stars">${stars(b.rating)}</div>
         ${tasteBars ? `<div class="bars">${tasteBars}</div>` : ''}
@@ -490,6 +575,8 @@
       updateGrindHint();
       updateRatioHint();
       updateRecipeHint();
+      updateSuggestHint();
+      updateTimeHint();
     }
 
     function formHtml() {
@@ -533,13 +620,23 @@
             <div class="grid2">
               ${extras}
               ${field(d.method === 'espresso' ? '萃取時間' : '總時間', `<input data-f="totalTime" value="${esc(d.totalTime)}" placeholder="${d.method === 'espresso' ? '0:28' : '2:45'}" inputmode="numeric">`)}
+              ${m.stages ? field('目標時間', `<input data-f="targetTime" value="${esc(d.targetTime)}" placeholder="3:00" inputmode="numeric">`) : ''}
             </div>
+            <div id="time-hint" class="hint"></div>
           </section>
 
           ${m.stages ? `<section class="card">
             <div class="card-head"><h2>分段注水</h2>
               <label class="check"><input type="checkbox" id="auto-scale" ${autoScale ? 'checked' : ''}> 隨水量等比例調整</label></div>
             <p class="muted small stage-help">每段填注水克數，和這段<b>結束</b>的秒數（例：30 或 1:30）。</p>
+            ${d.method === 'pourover' ? `<div class="suggest-row">
+              <button type="button" class="btn small" data-act="suggest">建議分段</button>
+              <select id="suggest-style" aria-label="建議的依據">
+                <option value="auto">自動（先找我的記錄）</option>
+                ${Object.entries(C.SUGGEST_STYLES).map(([k, st]) => `<option value="${k}">${st.label}</option>`).join('')}
+              </select>
+            </div>
+            <div id="suggest-hint" class="hint"></div>` : ''}
             <div id="stages"></div>
             <button type="button" class="btn ghost block" data-act="add-stage">＋ 手動新增</button>
             <div id="stage-sum" class="hint"></div>
@@ -664,6 +761,39 @@
       el.innerHTML = html;
     }
 
+    /** 「自動」建議時找參考記錄：這支豆子的最佳配方 → 同烘焙度豆子裡評分 4 星以上的一杯 */
+    function findReference() {
+      const bean = S.get('beans', d.beanId);
+      if (!bean) return null;
+      const best = bestBrew(bean.id, d.method, d.id);
+      if (best && best.stages && best.stages.length) {
+        return { brew: best, text: `${bean.name} 的${best.isBest ? '最佳配方' : '評分最高的一杯'}（${fmtDate(best.date)}${best.rating ? '，' + '★'.repeat(best.rating) : ''}）` };
+      }
+      if (!bean.roast) return null;
+      const similar = S.all('brews').filter((b) => {
+        const other = S.get('beans', b.beanId);
+        return b.id !== d.id && b.method === d.method && (b.rating || 0) >= 4 && b.stages && b.stages.length && other && other.roast === bean.roast;
+      }).sort((x, y) => {
+        const px = S.get('beans', x.beanId).process === bean.process ? 1 : 0;
+        const py = S.get('beans', y.beanId).process === bean.process ? 1 : 0;
+        return py - px || y.rating - x.rating || byDateDesc(x, y);
+      })[0];
+      return similar ? { brew: similar, text: `同為${bean.roast}的 ${beanNameOf(similar)}（${fmtDate(similar.date)}，${'★'.repeat(similar.rating)}）` } : null;
+    }
+
+    function updateSuggestHint() {
+      const el = $('#suggest-hint', page);
+      if (el) el.innerHTML = d.suggestBasis ? `<div>依據：${esc(d.suggestBasis)}</div>` : '';
+    }
+
+    function updateTimeHint() {
+      const el = $('#time-hint', page);
+      if (!el) return;
+      const adv = C.timeAdvice(d.targetTime, d.totalTime);
+      el.className = 'hint' + (adv && adv.level !== 'ok' ? ' warn' : '');
+      el.textContent = adv ? `目標 ${d.targetTime}，實際 ${d.totalTime}：${adv.text}` : '';
+    }
+
     function updateRecipeHint() {
       const el = $('#recipe-hint', page);
       if (!el) return;
@@ -772,6 +902,7 @@
         if (r !== null) { d.ratio = r; setVal('ratio', r); }
         onOutChanged();
       }
+      if (f === 'totalTime' || f === 'targetTime') updateTimeHint();
       updateRatioHint();
       updateStageSum();
     }
@@ -780,13 +911,39 @@
       const b = e.target.closest('[data-act]');
       if (!b) return;
       const act = b.dataset.act;
-      if (act === 'master') {
+      if (act === 'suggest') {
+        const style = $('#suggest-style', page).value;
+        const ref = style === 'auto' ? findReference() : null;
+        const bean = S.get('beans', d.beanId);
+        const sug = C.suggestStages({
+          dose: d.dose, water: d.water, style: style === 'auto' ? '60-40' : style,
+          roast: bean && bean.roast, reference: ref && ref.brew,
+        });
+        if (!sug) return toast('請先填粉量與水量');
+        const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
+        if (filled && !await ask('以建議的分段取代目前的分段？', '取代')) return;
+        d.stages = sug.stages;
+        d.targetTime = sug.targetTime;
+        setVal('targetTime', sug.targetTime);
+        if (sug.temp) { d.temp = sug.temp; setVal('temp', sug.temp); }
+        const st = C.SUGGEST_STYLES[sug.basis];
+        d.suggestBasis = ref ? ref.text : `通用經驗法則 ${st.label}：${st.note}` +
+          (sug.temp && bean && bean.roast ? `；水溫依${bean.roast}建議 ${sug.temp}°C` : '');
+        delete d.recipeKey;
+        delete d.recipeName;
+        renderStages();
+        updateRecipeHint();
+        updateSuggestHint();
+        updateTimeHint();
+        toast('已填入建議，可以再手動調整');
+      } else if (act === 'master') {
         const r = C.MASTER_RECIPES.find((x) => x.key === b.dataset.k);
         const filled = d.stages.some((s) => s.amount || C.stageEnd(s) !== null);
         if (filled && !await ask(`以「${r.name}」取代目前的分段與比例？`, '套用')) return;
         const a = C.applyMasterRecipe(r.key, d.dose);
         if (d.dripper) delete a.dripper;
         Object.assign(d, a);
+        delete d.suggestBasis;
         draw();
         toast(`已套用 ${r.name}`);
       } else if (act === 'tpl') {
@@ -798,8 +955,10 @@
         d.stages = built;
         delete d.recipeKey;
         delete d.recipeName;
+        delete d.suggestBasis;
         renderStages();
         updateRecipeHint();
+        updateSuggestHint();
       } else if (act === 'add-stage') {
         d.stages.push(blankStage());
         renderStages();
@@ -935,6 +1094,7 @@
       }).join('')}
       <div class="actions">
         <a class="btn primary" href="#/brew/new?bean=${id}">＋ 用這支豆子沖一杯</a>
+        ${brews.length > 1 ? `<a class="btn" href="#/compare?brew=${brews[0].id}">對比記錄</a>` : ''}
         <button class="btn ghost" data-act="archive">${bean.archived ? '移回架上' : '標記為已喝完'}</button>
       </div>
       <h2 class="section-title">所有記錄（${brews.length}）</h2>
@@ -1217,7 +1377,7 @@
     // 每段的秒數是「這段結束」的時間
     const stages = brew ? C.migrateStages(brew.stages || [], brew.totalTime).filter((s) => C.stageEnd(s) !== null) : [];
     const cum = C.cumulative(stages);
-    const target = brew ? C.parseTime(brew.totalTime) : null;
+    const target = brew ? C.parseTime(brew.targetTime || brew.totalTime) : null;
 
     const page = mount(`<div class="page timer-page">
       ${header('計時沖煮', { back: recipe ? '#/tools?t=recipes' : brew ? '#/brew/' + id : '#/timer' })}
