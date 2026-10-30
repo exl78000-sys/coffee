@@ -5,19 +5,59 @@
  *   「豆子」「磨豆機」「沖煮記錄」三個分頁，一列一筆，可以直接打開查看
  *   「_照片」隱藏分頁存豆子照片（切成多格存放）
  *
+ * App 的頁面直接從 GitHub 讀取（APP_URL），所以只要貼這一個檔案；
+ * GitHub 上更新後，最多一小時內自動生效（網址加上 ?refresh=1 可立即更新）。
  * 安裝方式見 README「存到 Google 試算表」。
  *
  * @OnlyCurrentDoc 只要求存取這一份試算表的權限
  */
 
+const APP_URL = 'https://raw.githubusercontent.com/exl78000-sys/coffee/claude/nifty-brahmagupta-6jrbmm/gas/Index.html';
 const TABS = { beans: '豆子', grinders: '磨豆機', brews: '沖煮記錄' };
 const PHOTO_TAB = '_照片';
 const CHUNK = 45000; // 單一儲存格上限 50,000 字
+const CACHE_PART = 30000; // CacheService 單一值上限 100KB（中文一字 3 bytes）
+const CACHE_SECONDS = 3600;
 
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+function doGet(e) {
+  const refresh = e && e.parameter && e.parameter.refresh;
+  let html;
+  try {
+    html = appHtml_(!!refresh);
+  } catch (err) {
+    return HtmlService.createHtmlOutput(
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<p style="font:16px sans-serif;padding:16px">無法從 GitHub 載入 App：' + String(err.message || err).replace(/[<>&]/g, '') +
+      '<br>請確認網路正常，或稍後再試。</p>');
+  }
+  return HtmlService.createHtmlOutput(html)
     .setTitle('咖啡沖煮記錄')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+/** 從 GitHub 取 App 頁面，快取一小時 */
+function appHtml_(refresh) {
+  const cache = CacheService.getScriptCache();
+  if (!refresh) {
+    const meta = cache.get('app:n');
+    if (meta) {
+      const keys = [];
+      for (let i = 0; i < Number(meta); i++) keys.push('app:' + i);
+      const parts = cache.getAll(keys);
+      if (keys.every(function (k) { return parts[k] !== undefined && parts[k] !== null; })) {
+        return keys.map(function (k) { return parts[k]; }).join('');
+      }
+    }
+  }
+  const res = UrlFetchApp.fetch(APP_URL, { muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) throw new Error('HTTP ' + res.getResponseCode());
+  const html = res.getContentText('UTF-8');
+  const entries = { 'app:n': '' };
+  let n = 0;
+  for (let i = 0; i < html.length; i += CACHE_PART) entries['app:' + n++] = html.slice(i, i + CACHE_PART);
+  entries['app:n'] = String(n);
+  try { cache.putAll(entries, CACHE_SECONDS); } catch (err) { /* 快取失敗不影響顯示 */ }
+  return html;
 }
 
 function book_() {

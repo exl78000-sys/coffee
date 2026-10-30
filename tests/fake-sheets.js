@@ -117,6 +117,35 @@
           .replace('HH', p(d.getHours())).replace('mm', p(d.getMinutes()));
       },
     };
+    // 網頁載入相關：UrlFetchApp（可由測試設定回應）、CacheService、HtmlService
+    store.fetches = 0;
+    store.response = store.response || { code: 200, body: '<html>app</html>' };
+    target.UrlFetchApp = {
+      fetch() {
+        store.fetches++;
+        const r = store.response;
+        return { getResponseCode: () => r.code, getContentText: () => r.body };
+      },
+    };
+    const cache = {};
+    target.CacheService = {
+      getScriptCache: () => ({
+        get: (k) => (k in cache ? cache[k] : null),
+        getAll: (keys) => keys.reduce((o, k) => { if (k in cache) o[k] = cache[k]; return o; }, {}),
+        putAll: (entries) => {
+          Object.keys(entries).forEach((k) => {
+            if (String(entries[k]).length > 100000) throw new Error('value too large');
+            cache[k] = entries[k];
+          });
+        },
+      }),
+    };
+    target.HtmlService = {
+      createHtmlOutput(html) {
+        const out = { html, title: '', setTitle(t) { out.title = t; return out; }, addMetaTag() { return out; } };
+        return out;
+      },
+    };
     return store;
   }
 

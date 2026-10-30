@@ -12,7 +12,7 @@ function server() {
   // 跟 google.script.run 一樣，參數與回傳值都經過序列化
   const json = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
   const gs = new Proxy({}, { get: (_, name) => (...args) => json(ctx[name](...json(args))) });
-  return { gs, store };
+  return { gs, store, ctx };
 }
 
 const COLS = [{ header: 'id', text: true }, { header: '名稱', text: true }, { header: '烘焙日', text: true }, { header: '重量 g' }];
@@ -75,4 +75,25 @@ test('照片切格存放並完整讀回', () => {
   assert.equal(gs.deletePhoto(id), true);
   assert.equal(gs.getPhoto(id), '');
   assert.throws(() => gs.savePhoto('javascript:alert(1)'));
+});
+
+test('doGet 從 GitHub 載入頁面並快取，refresh=1 重新抓', () => {
+  const { ctx, store } = server();
+  const big = '<!DOCTYPE html>' + '咖'.repeat(70000) + 'a'.repeat(50000);
+  store.response = { code: 200, body: big };
+  const first = ctx.doGet({ parameter: {} });
+  assert.equal(first.html, big);
+  assert.equal(first.title, '咖啡沖煮記錄');
+  assert.equal(ctx.doGet({ parameter: {} }).html, big);
+  assert.equal(store.fetches, 1, '第二次用快取');
+  store.response = { code: 200, body: '<p>new</p>' };
+  assert.equal(ctx.doGet({ parameter: { refresh: '1' } }).html, '<p>new</p>');
+  assert.equal(store.fetches, 2);
+});
+
+test('doGet 抓不到時顯示說明', () => {
+  const { ctx, store } = server();
+  store.response = { code: 404, body: 'Not Found' };
+  const out = ctx.doGet({ parameter: {} });
+  assert.ok(out.html.includes('無法從 GitHub 載入 App') && out.html.includes('HTTP 404'));
 });
